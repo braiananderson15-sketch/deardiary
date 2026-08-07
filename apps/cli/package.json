@@ -1,0 +1,28 @@
+{
+  "name": "deardiary",
+  "version": "0.0.1",
+  "description": "Dear Diary — a global diary for coding agents. Struggles, wins, ideas, and observations, logged by your agents, queryable by you.",
+  "license": "MIT",
+  "type": "module",
+  "bin": { "deardiary": "./dist/cli.mjs" },
+  "files": ["dist", "skill"],
+  "engines": { "node": ">=25.7.0" },
+  "scripts": {
+    "build": "vp pack",
+    "dev": "node --experimental-strip-types src/cli.ts",
+    "typecheck": "tsgo --noEmit",
+    "test": "vp test run"
+  },
+  "dependencies": {
+    "@deardiary/core": "workspace:*",
+    "@deardiary/mcp": "workspace:*",
+    "@effect/cli": "catalog:",
+    "@effect/platform-node": "catalog:",
+    "@modelcontextprotocol/sdk": "catalog:",
+    "effect": "catalog:"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "typescript": "catalog:"
+  }
+}

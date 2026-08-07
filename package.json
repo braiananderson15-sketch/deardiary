@@ -1,0 +1,25 @@
+{
+  "name": "deardiary",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@11.19.0",
+  "engines": {
+    "node": ">=25.7.0"
+  },
+  "scripts": {
+    "build": "vp run -r build",
+    "typecheck": "vp run -r typecheck",
+    "tc": "vp run -r typecheck",
+    "lint": "vp lint",
+    "test": "vp run -r test",
+    "fmt": "vp fmt",
+    "fmt:check": "vp fmt --check",
+    "dev:cli": "vp -C apps/cli dev",
+    "dev:web": "vp -C apps/marketing dev"
+  },
+  "devDependencies": {
+    "vite-plus": "catalog:",
+    "typescript": "catalog:",
+    "@types/node": "catalog:"
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "name": "@deardiary/core",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./db": { "types": "./src/db.ts", "import": "./src/db.ts" },
+    "./git": { "types": "./src/git.ts", "import": "./src/git.ts" },
+    "./entries": { "types": "./src/entries.ts", "import": "./src/entries.ts" },
+    "./projects": { "types": "./src/projects.ts", "import": "./src/projects.ts" },
+    "./format": { "types": "./src/format.ts", "import": "./src/format.ts" },
+    "./paths": { "types": "./src/paths.ts", "import": "./src/paths.ts" }
+  },
+  "scripts": {
+    "typecheck": "tsgo --noEmit",
+    "test": "vp test run"
+  },
+  "dependencies": {
+    "effect": "catalog:"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "typescript": "catalog:"
+  }
+}

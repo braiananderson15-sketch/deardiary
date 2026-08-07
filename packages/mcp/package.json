@@ -1,0 +1,23 @@
+{
+  "name": "@deardiary/mcp",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./server": { "types": "./src/server.ts", "import": "./src/server.ts" },
+    "./tools": { "types": "./src/tools.ts", "import": "./src/tools.ts" }
+  },
+  "scripts": {
+    "typecheck": "tsgo --noEmit",
+    "test": "vp test run"
+  },
+  "dependencies": {
+    "@deardiary/core": "workspace:*",
+    "@modelcontextprotocol/sdk": "catalog:",
+    "effect": "catalog:"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "typescript": "catalog:"
+  }
+}
