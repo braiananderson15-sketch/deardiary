@@ -4,12 +4,30 @@
   "private": true,
   "type": "module",
   "exports": {
-    "./db": { "types": "./src/db.ts", "import": "./src/db.ts" },
-    "./git": { "types": "./src/git.ts", "import": "./src/git.ts" },
-    "./entries": { "types": "./src/entries.ts", "import": "./src/entries.ts" },
-    "./projects": { "types": "./src/projects.ts", "import": "./src/projects.ts" },
-    "./format": { "types": "./src/format.ts", "import": "./src/format.ts" },
-    "./paths": { "types": "./src/paths.ts", "import": "./src/paths.ts" }
+    "./db": {
+      "types": "./src/db.ts",
+      "import": "./src/db.ts"
+    },
+    "./git": {
+      "types": "./src/git.ts",
+      "import": "./src/git.ts"
+    },
+    "./entries": {
+      "types": "./src/entries.ts",
+      "import": "./src/entries.ts"
+    },
+    "./projects": {
+      "types": "./src/projects.ts",
+      "import": "./src/projects.ts"
+    },
+    "./format": {
+      "types": "./src/format.ts",
+      "import": "./src/format.ts"
+    },
+    "./paths": {
+      "types": "./src/paths.ts",
+      "import": "./src/paths.ts"
+    }
   },
   "scripts": {
     "typecheck": "tsgo --noEmit",
@@ -19,6 +37,8 @@
     "effect": "catalog:"
   },
   "devDependencies": {
+    "@effect/platform-node": "catalog:",
+    "@effect/vitest": "catalog:",
     "@types/node": "catalog:",
     "typescript": "catalog:"
   }

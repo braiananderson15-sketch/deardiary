@@ -2,10 +2,6 @@
   "name": "deardiary",
   "private": true,
   "type": "module",
-  "packageManager": "pnpm@11.19.0",
-  "engines": {
-    "node": ">=25.7.0"
-  },
   "scripts": {
     "build": "vp run -r build",
     "typecheck": "vp run -r typecheck",
@@ -18,8 +14,14 @@
     "dev:web": "vp -C apps/marketing dev"
   },
   "devDependencies": {
-    "vite-plus": "catalog:",
+    "@astrojs/check": "catalog:",
+    "@types/node": "catalog:",
+    "@typescript/native-preview": "catalog:",
     "typescript": "catalog:",
-    "@types/node": "catalog:"
-  }
+    "vite-plus": "catalog:"
+  },
+  "engines": {
+    "node": ">=25.7.0"
+  },
+  "packageManager": "pnpm@11.19.0"
 }

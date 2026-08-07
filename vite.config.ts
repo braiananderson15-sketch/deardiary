@@ -3,10 +3,11 @@ import { defineConfig } from "vite-plus";
 export default defineConfig({
   staged: { "*": "vp fmt" },
   fmt: {
-    ignorePatterns: ["dist", "node_modules", "pnpm-lock.yaml"],
+    ignorePatterns: [".repos/**", "**/.astro/**", "dist", "node_modules", "pnpm-lock.yaml"],
     sortPackageJson: {},
   },
   lint: {
+    ignorePatterns: [".repos/**", "**/.astro/**", "dist", "node_modules"],
     plugins: ["eslint", "oxc", "unicorn", "typescript"],
     categories: { correctness: "warn", suspicious: "warn", perf: "warn" },
   },

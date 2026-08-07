@@ -4,12 +4,18 @@
   "private": true,
   "type": "module",
   "exports": {
-    "./server": { "types": "./src/server.ts", "import": "./src/server.ts" },
-    "./tools": { "types": "./src/tools.ts", "import": "./src/tools.ts" }
+    "./server": {
+      "types": "./src/server.ts",
+      "import": "./src/server.ts"
+    },
+    "./tools": {
+      "types": "./src/tools.ts",
+      "import": "./src/tools.ts"
+    }
   },
   "scripts": {
     "typecheck": "tsgo --noEmit",
-    "test": "vp test run"
+    "test": "vp test run --passWithNoTests"
   },
   "dependencies": {
     "@deardiary/core": "workspace:*",

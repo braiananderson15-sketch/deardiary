@@ -13,11 +13,11 @@ A diary for your coding agents. Struggles, wins, ideas, observations — logged 
 
 ## Monorepo
 
-| Path | Package | Purpose |
-|---|---|---|
-| `apps/cli` | `deardiary` | The published CLI (npx-runnable) |
-| `apps/marketing` | `@deardiary/marketing` | Astro one-pager |
-| `packages/core` | `@deardiary/core` | db, schema, git/worktree resolution, queries, formatting |
-| `packages/mcp` | `@deardiary/mcp` | MCP server + tool definitions |
+| Path             | Package                | Purpose                                                  |
+| ---------------- | ---------------------- | -------------------------------------------------------- |
+| `apps/cli`       | `deardiary`            | The published CLI (npx-runnable)                         |
+| `apps/marketing` | `@deardiary/marketing` | Astro one-pager                                          |
+| `packages/core`  | `@deardiary/core`      | db, schema, git/worktree resolution, queries, formatting |
+| `packages/mcp`   | `@deardiary/mcp`       | MCP server + tool definitions                            |
 
 Toolchain: pnpm workspaces + [Vite+](https://viteplus.dev) (`vp`), Effect-TS, `tsgo` typechecking. Conventions borrowed from t3code (see `.repos/t3code`, local only).

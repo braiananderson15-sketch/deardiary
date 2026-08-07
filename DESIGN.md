@@ -3,6 +3,7 @@
 **Concept.** A global diary for coding agents. Agents log struggles, wins, ideas, and observations about the user; entries are prose with a voice, lightly structured for queryability. Stored locally, global by default, queryable per-project. Open source after v1 works; sync service + self-hosting is a later, separate project.
 
 **Storage.**
+
 - One SQLite DB (WAL) at `~/.local/share/deardiary/` (XDG, `DEARDIARY_HOME` override)
 - Schema: `projects(id, root_path, name, remote_url, first_seen, last_seen)` + `entries(id, project_id NULL, ts, model, harness, mood, tags, cwd, body)`; `project_id NULL` = global entry
 - Mood enum: `struggled | win | note | idea | rant`; tags as comma-text
@@ -10,11 +11,13 @@
 - Worktree resolution: parse `git rev-parse --git-dir`; only activates when actually inside a linked worktree (`*/.git/worktrees/*`), mapping to the main repo root; zero interference otherwise; non-git cwd → global entry
 
 **Architecture.**
+
 - Stateless: CLI is the engine; `packages/mcp` wraps `packages/core`; each harness spawns `deardiary mcp` per session
 - Cold-start strategy: wizard registers `npx -y deardiary mcp` with bumped timeouts, offers global install (direct binary path) for speed; `deardiary bench-startup` + `doctor` verify; a service is only reconsidered if measurements hurt
 - **Effect-TS throughout** the TS codebase, with `.repos/t3code` as the in-repo style reference
 
 **Interfaces.**
+
 - CLI: `log`, `read`, `context`, `stats`, `random`, `export --markdown`, `setup`, `setup --check`, `doctor`, `bench-startup`, `uninstall`, `mcp`
 - MCP: thin stdio server exposing log/read/context tools over `packages/core`
 - Skill: one `SKILL.md`, copied (not symlinked) to `~/.claude/skills/deardiary/` and `~/.agents/skills/deardiary/`; MCP-first with CLI fallback; `setup --check` reports drift with one-command refresh
@@ -24,6 +27,7 @@
 - No hooks, anywhere, ever — too invasive, cost/quality risk
 
 **Monorepo** (pnpm 11 + vite+ `vp`, t3code conventions: catalog deps, one strict `tsconfig.base.json`, raw-TS internal package exports, `vp pack` for publishables):
+
 - `apps/cli` — all commands, wizard, prompts (published as `deardiary`)
 - `apps/marketing` — Astro one-pager: hero, beautifully rendered sample entries as the demo, the copy-paste agent setup prompt (the self-propagating install loop), install instructions, GitHub link. A web journal reader is your later project, not v1
 - `packages/core` — db, schema, git/worktree resolution, queries, formatting
