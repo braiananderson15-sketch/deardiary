@@ -15,17 +15,18 @@
     "build": "vp pack",
     "dev": "node --experimental-strip-types src/cli.ts",
     "typecheck": "tsgo --noEmit",
-    "test": "vp test run --passWithNoTests"
+    "test": "vp test run"
   },
   "dependencies": {
-    "@deardiary/core": "workspace:*",
-    "@deardiary/mcp": "workspace:*",
-    "@effect/cli": "catalog:",
     "@effect/platform-node": "catalog:",
     "@modelcontextprotocol/sdk": "catalog:",
-    "effect": "catalog:"
+    "effect": "catalog:",
+    "zod": "catalog:"
   },
   "devDependencies": {
+    "@deardiary/core": "workspace:*",
+    "@deardiary/mcp": "workspace:*",
+    "@effect/vitest": "catalog:",
     "@types/node": "catalog:",
     "typescript": "catalog:"
   },

@@ -1,0 +1,861 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Dear Diary — Passive Guidance Plan</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        --page: #f4f1ea;
+        --panel: #fffdf8;
+        --ink: #23201c;
+        --muted: #6f685f;
+        --line: #ddd5c9;
+        --accent: #7c3f2a;
+        --accent-soft: #f1ded5;
+        --code: #2c2723;
+        --code-ink: #fff8ed;
+        --success: #256b4b;
+        --shadow: 0 14px 38px rgb(47 36 27 / 10%);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html {
+        scroll-behavior: smooth;
+      }
+
+      body {
+        margin: 0;
+        background:
+          radial-gradient(circle at 8% 0%, rgb(124 63 42 / 9%), transparent 28rem), var(--page);
+        color: var(--ink);
+        font-family:
+          Inter,
+          ui-sans-serif,
+          system-ui,
+          -apple-system,
+          BlinkMacSystemFont,
+          "Segoe UI",
+          sans-serif;
+        line-height: 1.6;
+      }
+
+      a {
+        color: var(--accent);
+      }
+
+      .skip-link {
+        position: absolute;
+        top: -4rem;
+        left: 1rem;
+        z-index: 10;
+        padding: 0.65rem 0.9rem;
+        background: var(--ink);
+        color: var(--panel);
+        border-radius: 0.4rem;
+      }
+
+      .skip-link:focus {
+        top: 1rem;
+      }
+
+      .shell {
+        width: min(1120px, calc(100% - 2rem));
+        margin: 0 auto;
+      }
+
+      header {
+        padding: 4.5rem 0 2.8rem;
+      }
+
+      .eyebrow,
+      .badge {
+        font-size: 0.76rem;
+        font-weight: 750;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+      }
+
+      .eyebrow {
+        margin: 0 0 0.75rem;
+        color: var(--accent);
+      }
+
+      h1,
+      h2,
+      h3,
+      p {
+        margin-top: 0;
+      }
+
+      h1 {
+        max-width: 800px;
+        margin-bottom: 1rem;
+        font-family: Georgia, "Times New Roman", serif;
+        font-size: clamp(2.6rem, 8vw, 5.5rem);
+        font-weight: 500;
+        letter-spacing: -0.045em;
+        line-height: 0.98;
+      }
+
+      h2 {
+        margin-bottom: 1.25rem;
+        font-size: clamp(1.45rem, 3vw, 2rem);
+        line-height: 1.15;
+      }
+
+      h3 {
+        margin-bottom: 0.45rem;
+        font-size: 1.02rem;
+      }
+
+      .lede {
+        max-width: 760px;
+        margin-bottom: 1.5rem;
+        color: var(--muted);
+        font-size: 1.13rem;
+      }
+
+      .meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.6rem;
+      }
+
+      .badge {
+        padding: 0.35rem 0.65rem;
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        background: rgb(255 253 248 / 68%);
+      }
+
+      nav {
+        position: sticky;
+        top: 0;
+        z-index: 3;
+        border-block: 1px solid var(--line);
+        background: rgb(244 241 234 / 92%);
+        backdrop-filter: blur(10px);
+      }
+
+      nav .shell {
+        display: flex;
+        gap: 1.25rem;
+        overflow-x: auto;
+        padding-block: 0.7rem;
+      }
+
+      nav a {
+        flex: none;
+        color: var(--muted);
+        font-size: 0.88rem;
+        font-weight: 700;
+        text-decoration: none;
+      }
+
+      nav a:hover,
+      nav a:focus-visible {
+        color: var(--accent);
+      }
+
+      main {
+        padding: 3rem 0 5rem;
+      }
+
+      section {
+        scroll-margin-top: 4rem;
+        margin-bottom: 3.5rem;
+      }
+
+      .panel {
+        padding: clamp(1.25rem, 3vw, 2rem);
+        border: 1px solid var(--line);
+        border-radius: 1rem;
+        background: var(--panel);
+        box-shadow: var(--shadow);
+      }
+
+      .callout {
+        border-left: 0.35rem solid var(--accent);
+      }
+
+      .callout p:last-child,
+      .card p:last-child,
+      li:last-child {
+        margin-bottom: 0;
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 1rem;
+      }
+
+      .card {
+        padding: 1.25rem;
+        border: 1px solid var(--line);
+        border-radius: 0.85rem;
+        background: rgb(255 253 248 / 66%);
+      }
+
+      .card .number {
+        display: grid;
+        width: 2rem;
+        height: 2rem;
+        margin-bottom: 0.8rem;
+        place-items: center;
+        border-radius: 50%;
+        background: var(--accent-soft);
+        color: var(--accent);
+        font-weight: 800;
+      }
+
+      .flow {
+        display: grid;
+        grid-template-columns: 1fr auto 1fr auto 1fr;
+        align-items: stretch;
+        gap: 0.7rem;
+      }
+
+      .flow .arrow {
+        align-self: center;
+        color: var(--accent);
+        font-size: 1.5rem;
+        font-weight: 800;
+      }
+
+      ul,
+      ol {
+        padding-left: 1.25rem;
+      }
+
+      li {
+        margin-bottom: 0.5rem;
+      }
+
+      code,
+      pre {
+        font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+      }
+
+      code {
+        padding: 0.12rem 0.32rem;
+        border-radius: 0.28rem;
+        background: var(--accent-soft);
+        color: var(--accent);
+        font-size: 0.88em;
+      }
+
+      pre {
+        overflow-x: auto;
+        margin: 1rem 0 0;
+        padding: 1rem;
+        border-radius: 0.7rem;
+        background: var(--code);
+        color: var(--code-ink);
+        font-size: 0.84rem;
+        line-height: 1.55;
+      }
+
+      pre code {
+        padding: 0;
+        background: transparent;
+        color: inherit;
+      }
+
+      .phase {
+        display: grid;
+        grid-template-columns: minmax(9rem, 0.32fr) 1fr;
+        gap: 1.5rem;
+        padding: 1.5rem 0;
+        border-top: 1px solid var(--line);
+      }
+
+      .phase:last-child {
+        padding-bottom: 0;
+      }
+
+      .phase-label {
+        color: var(--accent);
+        font-weight: 800;
+      }
+
+      .phase-label span {
+        display: block;
+        color: var(--muted);
+        font-size: 0.82rem;
+        font-weight: 600;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.92rem;
+      }
+
+      th,
+      td {
+        padding: 0.8rem;
+        border-bottom: 1px solid var(--line);
+        text-align: left;
+        vertical-align: top;
+      }
+
+      th {
+        color: var(--muted);
+        font-size: 0.76rem;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+      }
+
+      .checklist {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.75rem 1.5rem;
+        padding: 0;
+        list-style: none;
+      }
+
+      .checklist li {
+        position: relative;
+        padding-left: 1.7rem;
+      }
+
+      .checklist li::before {
+        position: absolute;
+        left: 0;
+        content: "✓";
+        color: var(--success);
+        font-weight: 900;
+      }
+
+      footer {
+        padding: 1.5rem 0 3rem;
+        border-top: 1px solid var(--line);
+        color: var(--muted);
+        font-size: 0.88rem;
+      }
+
+      @media (max-width: 800px) {
+        .grid,
+        .checklist {
+          grid-template-columns: 1fr;
+        }
+
+        .flow {
+          grid-template-columns: 1fr;
+        }
+
+        .flow .arrow {
+          transform: rotate(90deg);
+          justify-self: center;
+        }
+
+        .phase {
+          grid-template-columns: 1fr;
+          gap: 0.4rem;
+        }
+
+        table {
+          display: block;
+          overflow-x: auto;
+        }
+      }
+
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --page: #171412;
+          --panel: #211d1a;
+          --ink: #f4ede4;
+          --muted: #b5aa9f;
+          --line: #3c342e;
+          --accent: #e59673;
+          --accent-soft: #432a21;
+          --code: #0e0c0b;
+          --code-ink: #f8eadf;
+          --success: #78c89e;
+          --shadow: 0 14px 38px rgb(0 0 0 / 22%);
+        }
+
+        .badge,
+        nav,
+        .card {
+          background-color: rgb(33 29 26 / 82%);
+        }
+      }
+
+      @media print {
+        :root {
+          --page: #fff;
+          --panel: #fff;
+          --ink: #111;
+          --muted: #555;
+          --line: #ccc;
+          --accent: #6e321f;
+          --accent-soft: #f7e8e1;
+          --shadow: none;
+        }
+
+        nav,
+        .skip-link {
+          display: none;
+        }
+
+        body {
+          background: #fff;
+        }
+
+        header {
+          padding-top: 1rem;
+        }
+
+        section,
+        .panel,
+        .card {
+          break-inside: avoid;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to plan</a>
+
+    <header>
+      <div class="shell">
+        <p class="eyebrow">Implementation plan</p>
+        <h1>Make Dear Diary a passive habit with an explicit workflow.</h1>
+        <p class="lede">
+          Move the “when should I journal?” decision into durable harness guidance. Keep the
+          installed skill focused on how to record or recall an entry, and extend setup to manage
+          the connection safely.
+        </p>
+        <div class="meta" aria-label="Plan metadata">
+          <span class="badge">Status: proposed</span>
+          <span class="badge">Scope: CLI + skill + tests</span>
+          <span class="badge">Default: global guidance</span>
+        </div>
+      </div>
+    </header>
+
+    <nav aria-label="Plan sections">
+      <div class="shell">
+        <a href="#outcome">Outcome</a>
+        <a href="#architecture">Architecture</a>
+        <a href="#contract">CLI contract</a>
+        <a href="#phases">Phases</a>
+        <a href="#files">Files</a>
+        <a href="#tests">Tests</a>
+        <a href="#acceptance">Acceptance</a>
+      </div>
+    </nav>
+
+    <main id="main" class="shell">
+      <section id="outcome" class="panel callout">
+        <p class="eyebrow">Target outcome</p>
+        <h2>One policy, one workflow, one safe installer.</h2>
+        <p>
+          Every supported harness sees a concise passive reminder on each run. When the reminder
+          fires, the agent loads the Dear Diary skill and follows a stable MCP-first workflow.
+          Re-running setup repairs drift without duplicating text or overwriting unrelated user
+          instructions.
+        </p>
+      </section>
+
+      <section id="architecture">
+        <p class="eyebrow">Responsibility split</p>
+        <h2>Keep the trigger separate from execution.</h2>
+        <div class="flow" aria-label="Guidance to skill to tools flow">
+          <article class="card">
+            <div class="number">1</div>
+            <h3>AGENTS / CLAUDE guidance</h3>
+            <p>Decides when a situation is diary-worthy and asks the agent to invoke the skill.</p>
+          </article>
+          <div class="arrow" aria-hidden="true">→</div>
+          <article class="card">
+            <div class="number">2</div>
+            <h3>Dear Diary skill</h3>
+            <p>Chooses record or recall, shapes the entry, and applies voice and fallback rules.</p>
+          </article>
+          <div class="arrow" aria-hidden="true">→</div>
+          <article class="card">
+            <div class="number">3</div>
+            <h3>MCP / CLI</h3>
+            <p>Performs durable local storage and scoped reads through the existing interfaces.</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="grid" aria-label="Key decisions">
+        <article class="card">
+          <h3>Global by default</h3>
+          <p>
+            Dear Diary spans projects, so normal setup installs user-level passive guidance. Project
+            guidance remains an explicit option because it may become tracked team policy.
+          </p>
+        </article>
+        <article class="card">
+          <h3>Managed blocks</h3>
+          <p>
+            Own only the stable marked block and its single preceding separator newline. Preserve
+            all surrounding content, formatting, file permissions, and unrelated harness settings.
+          </p>
+        </article>
+        <article class="card">
+          <h3>Implicit activation stays on</h3>
+          <p>
+            The passive instruction must be able to hand work to the skill. Do not make the skill
+            user-only while setup depends on agent-directed activation.
+          </p>
+        </article>
+      </section>
+
+      <section class="panel">
+        <p class="eyebrow">Initial boundaries</p>
+        <h2>Keep the first release deliberately narrow.</h2>
+        <ul>
+          <li>
+            Manage passive guidance for Codex and Claude only; retain existing OpenCode MCP setup,
+            but do not guess an unverified global instruction path.
+          </li>
+          <li>
+            Do not maintain a registry of every repository ever configured. Project setup and
+            removal always target the repository containing the current directory.
+          </li>
+          <li>Do not add hooks, automatic end-of-turn logging, or background diary writes.</li>
+          <li>Do not copy the full passive trigger policy back into <code>SKILL.md</code>.</li>
+        </ul>
+      </section>
+
+      <section id="contract" class="panel">
+        <p class="eyebrow">Proposed CLI contract</p>
+        <h2>Extend setup instead of adding another lifecycle command.</h2>
+        <pre><code>deardiary setup [--check] [--yes] [--guidance &lt;global|project|none&gt;]
+
+--guidance global   Manage user-level passive guidance (default)
+--guidance project  Manage guidance at the current Git repository root
+--guidance none     Install MCP and skills without touching passive guidance
+
+deardiary uninstall [--level &lt;integrations|cli|full&gt;] [--yes]
+                    [--guidance &lt;global|project&gt;]
+
+--guidance global   Remove managed user-level guidance (default)
+--guidance project  Remove managed guidance from the current Git repository</code></pre>
+        <ul>
+          <li><code>--check</code> evaluates exactly the selected guidance scope.</li>
+          <li><code>--yes</code> applies the previewed default deterministically.</li>
+          <li>
+            <code>project</code> fails before writes when the current directory is not in Git.
+          </li>
+          <li><code>none</code> leaves any previously installed guidance untouched.</li>
+          <li>
+            Uninstall removes only the selected guidance scope; it does not search other repos.
+          </li>
+          <li>Setup reports that open harness sessions must restart before new guidance loads.</li>
+        </ul>
+      </section>
+
+      <section class="panel">
+        <p class="eyebrow">Canonical passive policy</p>
+        <h2>Keep the pointer compact but sufficient.</h2>
+        <p>
+          Generate harness-specific invocation wording around one shared policy. The managed content
+          should carry the trigger; the skill should not repeat it.
+        </p>
+        <pre><code>&lt;!-- deardiary:start --&gt;
+
+## Dear Diary
+
+When work reveals a blocker that cost meaningful effort, a reusable win,
+or an actionable observation worth carrying forward, invoke $deardiary at
+the next natural pause. Also invoke it when the user asks to recall diary history.
+&lt;!-- deardiary:end --&gt;</code></pre>
+        <p>
+          Use the native skill spelling for each harness. Keep marker syntax stable across versions
+          so setup, check, repair, and uninstall share one ownership boundary.
+        </p>
+      </section>
+
+      <section id="phases" class="panel">
+        <p class="eyebrow">Implementation sequence</p>
+        <h2>Five cuts, each independently verifiable.</h2>
+
+        <div class="phase">
+          <div class="phase-label">Phase 1<span>Define the model</span></div>
+          <div>
+            <h3>Add guidance scope and resolved paths</h3>
+            <ul>
+              <li>Add a <code>GuidanceScope</code> union: <code>global | project | none</code>.</li>
+              <li>
+                Extend lifecycle paths with global Codex and Claude guidance candidates; resolve
+                <code>CODEX_HOME</code> rather than assuming <code>~/.codex</code>.
+              </li>
+              <li>
+                Resolve the Git root only for project scope. For Codex, plan the durable
+                <code>AGENTS.md</code> target and also plan an existing non-empty
+                <code>AGENTS.override.md</code> so the managed policy is not shadowed.
+              </li>
+              <li>
+                Resolve Claude guidance through a harness-specific target, not a shared guess.
+              </li>
+              <li>Represent every guidance change as the existing previewable file-plan shape.</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="phase">
+          <div class="phase-label">Phase 2<span>Manage blocks safely</span></div>
+          <div>
+            <h3>Implement deterministic insert, replace, inspect, and remove</h3>
+            <ul>
+              <li>
+                Insert the canonical block once. Own one separator newline immediately before the
+                start marker in non-empty files so the marker stays structurally independent and
+                removal restores the original bytes exactly.
+              </li>
+              <li>Replace a complete older block in place and report it as drifted.</li>
+              <li>Reject malformed or duplicate marker pairs before any file is written.</li>
+              <li>
+                Preserve unrelated bytes and retain the current atomic write and backup behavior.
+              </li>
+              <li>Remove only the managed insertion; delete the file only if it becomes empty.</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="phase">
+          <div class="phase-label">Phase 3<span>Wire lifecycle UX</span></div>
+          <div>
+            <h3>Integrate setup, check, doctor, and uninstall</h3>
+            <ul>
+              <li>Add guidance plans beside MCP and skill plans in setup previews.</li>
+              <li>
+                Show <code>CURRENT</code>, <code>MISSING</code>, or <code>DRIFTED</code> in setup
+                checks.
+              </li>
+              <li>Teach doctor to identify missing guidance or incomplete override coverage.</li>
+              <li>
+                Remove managed guidance at the existing <code>integrations</code> uninstall level,
+                using the uninstall command's explicit guidance scope.
+              </li>
+              <li>
+                Keep the all-or-nothing preflight: one unsafe target prevents every planned write.
+              </li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="phase">
+          <div class="phase-label">Phase 4<span>Tighten the skill</span></div>
+          <div>
+            <h3>Make SKILL.md an execution workflow</h3>
+            <ul>
+              <li>
+                Narrow the description to explicit requests or active instructions calling for Dear
+                Diary.
+              </li>
+              <li>Remove setup maintenance and the duplicated “when to write” policy.</li>
+              <li>Keep MCP-first tool selection, CLI fallback discovery, voice, and examples.</li>
+              <li>
+                Validate the packaged skill and refresh copied skill fixtures through setup tests.
+              </li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="phase">
+          <div class="phase-label">Phase 5<span>Document and release</span></div>
+          <div>
+            <h3>Explain the behavior where users encounter it</h3>
+            <ul>
+              <li>Update command help and README setup/uninstall examples.</li>
+              <li>Describe global default, project opt-in, and <code>none</code> escape hatch.</li>
+              <li>Call out restart requirements and managed-block ownership.</li>
+              <li>Run package tests, typecheck, build, and a temporary-home CLI smoke test.</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section id="files">
+        <p class="eyebrow">Expected change surface</p>
+        <h2>Touch the lifecycle seam, not the diary core.</h2>
+        <div class="panel">
+          <table>
+            <thead>
+              <tr>
+                <th>File</th>
+                <th>Responsibility</th>
+                <th>Planned change</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>apps/cli/src/args.ts</code></td>
+                <td>CLI grammar</td>
+                <td>Parse and validate setup and uninstall <code>--guidance</code> scopes.</td>
+              </tr>
+              <tr>
+                <td><code>apps/cli/src/cli.ts</code></td>
+                <td>User-facing command</td>
+                <td>Update help and pass guidance scope and current directory.</td>
+              </tr>
+              <tr>
+                <td><code>apps/cli/src/lifecycle.ts</code></td>
+                <td>Lifecycle planning</td>
+                <td>Add path resolution, managed blocks, previews, checks, repair, and removal.</td>
+              </tr>
+              <tr>
+                <td><code>apps/cli/skill/SKILL.md</code></td>
+                <td>Invoked workflow</td>
+                <td>Remove passive policy and setup maintenance; retain execution guidance.</td>
+              </tr>
+              <tr>
+                <td><code>apps/cli/test/args.test.ts</code></td>
+                <td>Parser contract</td>
+                <td>Cover command-specific defaults, valid scopes, invalid values, and flags.</td>
+              </tr>
+              <tr>
+                <td><code>apps/cli/test/lifecycle.test.ts</code></td>
+                <td>Filesystem safety</td>
+                <td>
+                  Cover managed blocks, drift, backups, scope, override behavior, and uninstall.
+                </td>
+              </tr>
+              <tr>
+                <td><code>apps/cli/test/cli.test.ts</code></td>
+                <td>End-to-end CLI</td>
+                <td>Cover help, check exit codes, preview output, and project-scope failure.</td>
+              </tr>
+              <tr>
+                <td><code>README.md</code></td>
+                <td>User contract</td>
+                <td>Explain passive activation and setup choices.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="tests">
+        <p class="eyebrow">Test matrix</p>
+        <h2>Prove preservation and idempotence first.</h2>
+        <div class="grid">
+          <article class="card">
+            <h3>Fresh files</h3>
+            <ul>
+              <li>Create global guidance with canonical content.</li>
+              <li>Create project guidance only when explicitly selected.</li>
+              <li>Leave no partial files when confirmation is declined.</li>
+            </ul>
+          </article>
+          <article class="card">
+            <h3>Existing files</h3>
+            <ul>
+              <li>Preserve unrelated instructions byte-for-byte.</li>
+              <li>Create non-clobbering backups before updates.</li>
+              <li>Preserve file permissions during atomic replacement.</li>
+            </ul>
+          </article>
+          <article class="card">
+            <h3>Drift and damage</h3>
+            <ul>
+              <li>Repair one outdated canonical block.</li>
+              <li>Reject unmatched or duplicate markers before writes.</li>
+              <li>Report shadowed global guidance clearly.</li>
+            </ul>
+          </article>
+          <article class="card">
+            <h3>Repeatability</h3>
+            <ul>
+              <li>A second setup produces no changes or backups.</li>
+              <li><code>setup --check</code> exits zero only when selected scope is current.</li>
+              <li>Skill and guidance upgrades drift independently.</li>
+            </ul>
+          </article>
+          <article class="card">
+            <h3>Uninstall</h3>
+            <ul>
+              <li>Remove only the managed insertion.</li>
+              <li>Retain a user-owned file with remaining content.</li>
+              <li>Remove an installer-created file when it becomes empty.</li>
+              <li>Remove only the selected global or current-project scope.</li>
+            </ul>
+          </article>
+          <article class="card">
+            <h3>Scope safety</h3>
+            <ul>
+              <li>Honor <code>CODEX_HOME</code> and temporary HOME fixtures.</li>
+              <li>Reject project mode outside Git.</li>
+              <li>Never resolve a write target to a broad directory.</li>
+            </ul>
+          </article>
+        </div>
+      </section>
+
+      <section class="panel">
+        <p class="eyebrow">Risks and controls</p>
+        <h2>Protect user-authored instructions.</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Risk</th>
+              <th>Control</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Setup duplicates guidance on every run.</td>
+              <td>Stable markers plus exact canonical comparison.</td>
+            </tr>
+            <tr>
+              <td>A malformed marker causes content loss.</td>
+              <td>Fail the full preflight; write nothing until every target is safe.</td>
+            </tr>
+            <tr>
+              <td>Global guidance is installed but shadowed.</td>
+              <td>Plan the durable base file and an existing active override as one setup unit.</td>
+            </tr>
+            <tr>
+              <td>Project setup changes team policy unexpectedly.</td>
+              <td>
+                Require explicit <code>--guidance project</code> and preview the repository path.
+              </td>
+            </tr>
+            <tr>
+              <td>The skill and guidance restate different thresholds.</td>
+              <td>Keep trigger policy only in guidance; keep execution only in the skill.</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="acceptance" class="panel callout">
+        <p class="eyebrow">Definition of done</p>
+        <h2>The change is complete when all outcomes are observable.</h2>
+        <ul class="checklist">
+          <li>Normal setup previews and installs global passive guidance.</li>
+          <li>Project guidance requires an explicit scope.</li>
+          <li>Setup is idempotent and repairs canonical drift.</li>
+          <li>Malformed managed blocks stop all writes safely.</li>
+          <li>Check and doctor report guidance health accurately.</li>
+          <li>Scoped uninstall preserves every byte outside the managed insertion.</li>
+          <li>The skill contains workflow mechanics, not passive trigger policy.</li>
+          <li>CLI help and README match implemented behavior.</li>
+          <li>Lifecycle, parser, CLI, typecheck, and build validations pass.</li>
+          <li>A fresh harness session can follow guidance into the installed skill.</li>
+        </ul>
+      </section>
+    </main>
+
+    <footer>
+      <div class="shell">
+        <strong>Dear Diary passive guidance plan.</strong> This document proposes implementation; it
+        does not modify lifecycle behavior by itself.
+      </div>
+    </footer>
+  </body>
+</html>
