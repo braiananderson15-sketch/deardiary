@@ -1,10 +1,10 @@
 {
-  "name": "deardiary",
-  "version": "0.0.1",
+  "name": "deardiary-cli",
+  "version": "0.0.2",
   "description": "Dear Diary — a global diary for coding agents. Struggles, wins, ideas, and observations, logged by your agents, queryable by you.",
   "license": "MIT",
   "bin": {
-    "deardiary": "./dist/cli.mjs"
+    "deardiary": "dist/cli.mjs"
   },
   "files": [
     "dist",
