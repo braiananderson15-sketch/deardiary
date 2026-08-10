@@ -36,11 +36,12 @@ const runCli = (args: ReadonlyArray<string>, options: CliOptions = {}): CliResul
   const cwd = options.cwd ?? temporaryDirectory("deardiary-cwd-");
   const home = options.home ?? makeHome();
   const userHome = options.userHome ?? temporaryDirectory("deardiary-user-home-");
+  const { FORCE_COLOR: _, ...environment } = process.env;
   const result = spawnSync(process.execPath, ["--experimental-strip-types", cliPath, ...args], {
     cwd,
     encoding: "utf8",
     env: {
-      ...process.env,
+      ...environment,
       NO_COLOR: "1",
       DEARDIARY_HOME: home,
       HOME: userHome,
