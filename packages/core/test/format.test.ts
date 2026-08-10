@@ -5,17 +5,19 @@ import * as Format from "../src/format.ts";
 
 const firstTimestamp = "2026-08-07T10:15:30.000Z";
 const secondTimestamp = "2026-08-07T11:45:00.000Z";
+const defaultCwd = "/workspace/dear-diary";
 
 const entry = (overrides: Partial<Entries.Entry> = {}): Entries.Entry =>
   new Entries.Entry({
     id: "00000000-0000-4000-8000-000000000001",
     projectId: "00000000-0000-4000-8000-000000000100",
+    projectRootPath: overrides.projectId === null ? null : (overrides.cwd ?? defaultCwd),
     timestamp: firstTimestamp,
     model: "gpt-5",
     harness: "codex",
     mood: "win",
     tags: ["effect", "sqlite"],
-    cwd: "/workspace/dear-diary",
+    cwd: defaultCwd,
     body: "The query layer is finally small and predictable.",
     updatedAt: firstTimestamp,
     deletedAt: null,
@@ -80,6 +82,14 @@ describe("renderEntries", () => {
     expect(output.indexOf(laterBody)).toBeLessThan(output.indexOf(earlierBody));
     expect(output).toContain(laterBody);
     expect(output).toContain(earlierBody);
+  });
+
+  it("shows the canonical repo for an entry logged from a linked worktree", () => {
+    expect(
+      Format.renderEntries([
+        entry({ cwd: "/tmp/linked-a", projectRootPath: "/workspace/project-a", tags: [] }),
+      ]),
+    ).toContain("project · /tmp/linked-a\nrepo: /workspace/project-a");
   });
 });
 
@@ -183,6 +193,14 @@ describe("renderContext", () => {
       Keep it honest."
     `);
   });
+
+  it("adds the canonical repo as a compact metadata segment", () => {
+    expect(
+      Format.renderContext([
+        entry({ cwd: "/tmp/linked-a", projectRootPath: "/workspace/project-a", tags: [] }),
+      ]),
+    ).toContain("| /tmp/linked-a | repo: /workspace/project-a]");
+  });
 });
 
 describe("renderMarkdown", () => {
@@ -225,6 +243,14 @@ describe("renderMarkdown", () => {
 
       **Body markup is untouched.**"
     `);
+  });
+
+  it("adds and escapes the canonical repo for linked worktrees", () => {
+    expect(
+      Format.renderMarkdown([
+        entry({ cwd: "/tmp/linked-a", projectRootPath: "/workspace/#project-a", tags: [] }),
+      ]),
+    ).toContain("**Project:** /workspace/\\#project-a");
   });
 
   it("normalizes controls and escapes Markdown syntax in metadata without touching the body", () => {

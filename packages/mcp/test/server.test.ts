@@ -18,6 +18,7 @@ import { makeDiaryMcpServer } from "../src/server.ts";
 const startupCwd = NodePath.resolve("/workspace");
 const projectA = NodePath.join(startupCwd, "project-a");
 const projectB = NodePath.join(startupCwd, "project-b");
+const linkedA = NodePath.join(projectA, "linked");
 
 const resolver = Git.RepositoryResolver.of({
   resolve: (cwd) => {
@@ -26,9 +27,9 @@ const resolver = Git.RepositoryResolver.of({
       root === null
         ? null
         : {
-            workingTreeRoot: root,
+            workingTreeRoot: cwd.startsWith(linkedA) ? linkedA : root,
             canonicalRoot: root,
-            isLinkedWorktree: false,
+            isLinkedWorktree: cwd.startsWith(linkedA),
           },
     );
   },
@@ -58,10 +59,15 @@ const structuredOf = (result: unknown): Readonly<Record<string, unknown>> => {
 
 const entriesOf = (
   result: unknown,
-): ReadonlyArray<{ readonly body: string; readonly projectId: string | null }> => {
+): ReadonlyArray<{
+  readonly body: string;
+  readonly projectId: string | null;
+  readonly projectRootPath: string | null;
+}> => {
   return (structuredOf(result).entries ?? []) as ReadonlyArray<{
     readonly body: string;
     readonly projectId: string | null;
+    readonly projectRootPath: string | null;
   }>;
 };
 
@@ -127,6 +133,7 @@ describe("Dear Diary MCP server", () => {
         body: "global win",
         mood: "win",
         projectId: null,
+        projectRootPath: null,
       });
 
       const [loggedA, loggedB] = await Promise.all([
@@ -141,6 +148,17 @@ describe("Dear Diary MCP server", () => {
       ]);
       expect(loggedA.isError).not.toBe(true);
       expect(loggedB.isError).not.toBe(true);
+      expect(structuredOf(loggedA).entry).toMatchObject({ projectRootPath: projectA });
+
+      const loggedLinked = await client.callTool({
+        name: "diary_log",
+        arguments: { body: "linked A entry", cwd: "project-a/linked" },
+      });
+      expect(loggedLinked.isError).not.toBe(true);
+      expect(structuredOf(loggedLinked).entry).toMatchObject({
+        cwd: linkedA,
+        projectRootPath: projectA,
+      });
 
       const current = await client.callTool({
         name: "diary_read",
@@ -148,6 +166,15 @@ describe("Dear Diary MCP server", () => {
       });
       expect(entriesOf(current).map((entry) => entry.body)).toEqual(["project A note"]);
       expect(textOf(current)).toContain("project A note");
+
+      const linkedRead = await client.callTool({
+        name: "diary_read",
+        arguments: { cwd: "project-a" },
+      });
+      expect(entriesOf(linkedRead).find((entry) => entry.body === "linked A entry")).toMatchObject({
+        projectRootPath: projectA,
+      });
+      expect(textOf(linkedRead)).toContain(`repo: ${projectA}`);
 
       const explicit = await client.callTool({
         name: "diary_read",
@@ -162,6 +189,7 @@ describe("Dear Diary MCP server", () => {
       expect(entriesOf(context).map((entry) => entry.body)).toEqual([
         "global win",
         "project A note",
+        "linked A entry",
       ]);
       expect(textOf(context)).toContain("Dear Diary context:");
 
@@ -170,7 +198,7 @@ describe("Dear Diary MCP server", () => {
         arguments: { cwd: "project-a", all: true },
       });
       expect(new Set(entriesOf(all).map((entry) => entry.body))).toEqual(
-        new Set(["global win", "project A note", "project B idea"]),
+        new Set(["global win", "project A note", "linked A entry", "project B idea"]),
       );
 
       const invalidResults = await Promise.all(

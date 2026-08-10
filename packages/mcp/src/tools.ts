@@ -99,6 +99,7 @@ export const DiaryContextInput = z.strictObject({
 const EntryOutput = z.strictObject({
   id: z.uuid(),
   projectId: z.uuid().nullable(),
+  projectRootPath: z.string().min(1).nullable(),
   timestamp,
   model: z.string().nullable(),
   harness: z.string().nullable(),
@@ -116,6 +117,7 @@ const EntriesOutput = z.strictObject({ entries: z.array(EntryOutput) });
 const structuredEntry = (entry: Entries.Entry): z.output<typeof EntryOutput> => ({
   id: entry.id,
   projectId: entry.projectId,
+  projectRootPath: entry.projectRootPath,
   timestamp: entry.timestamp,
   model: entry.model,
   harness: entry.harness,

@@ -202,6 +202,7 @@ describe("EntryRepository append", () => {
         expect.objectContaining({
           id: entryId,
           projectId: null,
+          projectRootPath: null,
           timestamp: secondTimestamp,
           updatedAt: secondTimestamp,
           deletedAt: null,
@@ -262,7 +263,9 @@ describe("EntryRepository append", () => {
       });
 
       expect(scoped.projectId).toBe(resolved.id);
+      expect(scoped.projectRootPath).toBe(resolved.rootPath);
       expect(global.projectId).toBeNull();
+      expect(global.projectRootPath).toBeNull();
       expect(resolutions).toBe(1);
     }).pipe(Effect.provide(testLayer(projects, options)));
   });
@@ -331,6 +334,29 @@ describe("EntryRepository append", () => {
 });
 
 describe("EntryRepository queries", () => {
+  it.effect("surfaces joined project roots and keeps global entries nullable", () =>
+    Effect.gen(function* () {
+      const repository = yield* Entries.EntryRepository;
+      const joinedProject = project(1);
+      yield* insertProject(joinedProject);
+      yield* insertEntry({
+        id: uuid(30),
+        projectId: joinedProject.id,
+        timestamp: secondTimestamp,
+        cwd: "/workspace/project-1-worktree",
+        body: "linked worktree entry",
+      });
+      yield* insertEntry({ id: uuid(31), timestamp: firstTimestamp, body: "global entry" });
+
+      const entries = yield* repository.context({ cwd: joinedProject.rootPath });
+      expect(entries.find((entry) => entry.id === uuid(30))).toMatchObject({
+        cwd: "/workspace/project-1-worktree",
+        projectRootPath: joinedProject.rootPath,
+      });
+      expect(entries.find((entry) => entry.id === uuid(31))?.projectRootPath).toBeNull();
+    }).pipe(Effect.provide(testLayer(projectRepository(() => Effect.succeed(project(1)))))),
+  );
+
   it.effect("supports project/global/all scope and every settled filter", () =>
     Effect.gen(function* () {
       const repository = yield* Entries.EntryRepository;
