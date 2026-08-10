@@ -4,7 +4,8 @@
 
 **Storage.**
 
-- One SQLite DB (WAL) at `~/.local/share/deardiary/` (XDG, `DEARDIARY_HOME` override)
+- One SQLite DB (WAL) in the platform data directory (`XDG_DATA_HOME` on Linux, Application
+  Support on macOS, AppData on Windows), with an absolute `DEARDIARY_HOME` override
 - Schema: `projects(id, root_path, name, remote_url, first_seen, last_seen)` + `entries(id, project_id NULL, ts, model, harness, mood, tags, cwd, body)`; `project_id NULL` = global entry
 - Mood enum: `struggled | win | note | idea | rant`; tags as comma-text
 - Sync seam only: UUIDs, `updated_at`, tombstones — zero network code in v1
@@ -13,7 +14,8 @@
 **Architecture.**
 
 - Stateless: CLI is the engine; `packages/mcp` wraps `packages/core`; each harness spawns `deardiary mcp` per session
-- Cold-start strategy: wizard registers `npx -y deardiary mcp` with bumped timeouts, offers global install (direct binary path) for speed; `deardiary bench-startup` + `doctor` verify; a service is only reconsidered if measurements hurt
+- Cold-start strategy: wizard registers `npx -y @p4cs/deardiary mcp` with a bumped timeout;
+  `deardiary bench-startup` + `doctor` verify; a service is only reconsidered if measurements hurt
 - **Effect-TS throughout** the TS codebase, with `.repos/t3code` as the in-repo style reference
 
 **Interfaces.**
@@ -28,7 +30,8 @@
 
 **Monorepo** (pnpm 11 + vite+ `vp`, t3code conventions: catalog deps, one strict `tsconfig.base.json`, raw-TS internal package exports, `vp pack` for publishables):
 
-- `apps/cli` — all commands, wizard, prompts (published as `deardiary`)
+- `apps/cli` — all commands, wizard, prompts (published canonically as `@p4cs/deardiary`, with
+  `deardiary-cli` as a compatibility alias)
 - `apps/marketing` — Astro one-pager: hero, beautifully rendered sample entries as the demo, the copy-paste agent setup prompt (the self-propagating install loop), install instructions, GitHub link. A web journal reader is your later project, not v1
 - `packages/core` — db, schema, git/worktree resolution, queries, formatting
 - `packages/mcp` — MCP server, tool schemas, harness quirks
@@ -37,7 +40,9 @@
 
 **Uninstall.** `deardiary uninstall` → three levels: (1) integrations only, (2) integrations + CLI, (3) full wipe incl. data dir (typed confirmation). `--yes` non-interactive per level; prints exactly what it removed; if globally installed, prints the final `npm rm -g` for the user.
 
-**Name & brand.** npm: **`deardiary`** (available — publish a placeholder or v0.0.1 to claim); brand: "Dear Diary"; entries read as "dear diary…"
+**Name & brand.** npm: **`@p4cs/deardiary`** is canonical; **`deardiary-cli`** is a compatibility
+alias. Both packages expose the `deardiary` binary. Brand: "Dear Diary"; entries read as "dear
+diary…"
 
 ---
 

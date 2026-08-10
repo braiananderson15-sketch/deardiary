@@ -16,7 +16,7 @@ permissions:
 jobs:
   validate:
     name: Validate on Ubuntu ARM
-    runs-on: blacksmith-4vcpu-ubuntu-2404-arm
+    runs-on: ubuntu-24.04-arm
     timeout-minutes: 10
     steps:
       - name: Checkout
@@ -46,6 +46,9 @@ jobs:
       - name: Test
         run: vp run -r test
 
+      - name: Check release smoke script
+        run: node --check scripts/release-smoke.mjs
+
       - name: Build CLI
         run: vp run --filter deardiary-cli build
 
@@ -53,7 +56,7 @@ jobs:
     name: Publish to npm
     needs: validate
     # npm trusted publishing currently accepts only GitHub-hosted runners.
-    # Keep validation on Blacksmith ARM and this minimal OIDC job on GitHub ARM.
+    # Keep the OIDC permission scoped to this minimal publish job.
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 10
     permissions:
@@ -128,6 +131,15 @@ jobs:
               exit 1
             fi
           done
+
+      - name: Smoke test packed release aliases
+        env:
+          RELEASE_VERSION: ${{ steps.release.outputs.version }}
+        run: |
+          node scripts/release-smoke.mjs \
+            "$RELEASE_VERSION" \
+            "$RUNNER_TEMP/npm-packages/scope-p4cs-deardiary-$RELEASE_VERSION.tgz" \
+            "$RUNNER_TEMP/npm-packages/deardiary-cli-$RELEASE_VERSION.tgz"
 
       - name: Publish release aliases
         env:

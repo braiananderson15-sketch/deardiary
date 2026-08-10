@@ -7,6 +7,8 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import { afterEach, describe, expect, it } from "@effect/vitest";
 
+import cliPackage from "../package.json" with { type: "json" };
+
 const cliPath = fileURLToPath(new URL("../src/cli.ts", import.meta.url));
 const temporaryRoots: Array<string> = [];
 
@@ -56,7 +58,10 @@ describe("deardiary mcp stdio", () => {
 
     try {
       await client.connect(transport, { timeout: 5_000 });
-      expect(client.getServerVersion()).toMatchObject({ name: "deardiary", version: "0.0.1" });
+      expect(client.getServerVersion()).toMatchObject({
+        name: "deardiary",
+        version: cliPackage.version,
+      });
       expect((await client.listTools()).tools.map((tool) => tool.name)).toEqual([
         "diary_log",
         "diary_read",

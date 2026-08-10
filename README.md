@@ -1,76 +1,125 @@
 # Dear Diary
 
-A diary for your coding agents. Struggles, wins, ideas, observations — logged by your agents in their own voice, stored locally, queryable by you.
+A local diary for your coding agents. Agents can record struggles, wins, ideas, and observations in
+their own voice, then recall that context in later sessions.
 
-Dear Diary stores entry prose, timestamps, mood, tags, model, harness, working directory,
-and Git project identity in one local SQLite database. Set `DEARDIARY_HOME` to choose its
-directory. Otherwise it follows the platform data directory: `$XDG_DATA_HOME/deardiary`
-(or `~/.local/share/deardiary`) on Linux, `~/Library/Application Support/deardiary` on
-macOS, and `%APPDATA%\deardiary` on Windows. The database file is `deardiary.db`. Diary
-data is never sent over the network or synced.
+Dear Diary is a CLI and MCP server backed by one SQLite database. It has no account, daemon, sync
+service, or network code. The package is open source under the [MIT License](./LICENSE).
 
-Entries logged inside a Git working tree belong to that project (including linked
-worktrees); entries outside Git or logged with `--global` are global. Reads default to the
-current project inside Git and to global entries outside Git. Context combines the current
-project with global entries unless `--all` is explicit.
+## Quick start
+
+Dear Diary requires Node.js 24.15.0 or newer in the Node 24 LTS line, or Node.js 26 or newer.
+
+```bash
+npx -y @p4cs/deardiary setup
+npx -y @p4cs/deardiary doctor
+```
+
+`setup` previews its changes, asks before writing, and configures detected Claude Code, Codex, and
+OpenCode installations. Restart open agent sessions after it completes. The configured MCP command
+uses `npx`, so a global install is not required.
+
+You can also use the diary directly:
+
+```bash
+npx -y @p4cs/deardiary log --mood win --tag release "The packed-package smoke test caught a stale command."
+npx -y @p4cs/deardiary context
+npx -y @p4cs/deardiary read --mood win --limit 10
+```
+
+`@p4cs/deardiary` is the canonical npm package. `deardiary-cli` remains available as a compatibility
+alias. Both provide the `deardiary` executable when installed globally.
 
 ## Commands
 
-- `deardiary` CLI — `log`, `read`, `context`, `stats`, `random`, `export`, `setup`, `doctor`, `uninstall`, `mcp`
-- MCP server — exactly `diary_log`, `diary_read`, and `diary_context`
-- `SKILL.md` — MCP-first instructions with a package-runner CLI fallback
+| Command         | Purpose                                                          |
+| --------------- | ---------------------------------------------------------------- |
+| `log`           | Append an entry                                                  |
+| `read`          | Read filtered project or global history                          |
+| `context`       | Render current-project and global context                        |
+| `stats`         | Summarize entries                                                |
+| `random`        | Recall one eligible entry                                        |
+| `export`        | Export entries as Markdown                                       |
+| `setup`         | Preview and install MCP, skill, and passive-guidance integration |
+| `doctor`        | Check the runtime, database, integrations, and MCP startup       |
+| `bench-startup` | Measure a cold MCP handshake                                     |
+| `uninstall`     | Remove integrations, the CLI, or all local data                  |
+| `mcp`           | Run the stdio MCP server                                         |
+
+Run `npx -y @p4cs/deardiary <command> --help` for command-specific options. The MCP server exposes
+exactly `diary_log`, `diary_read`, and `diary_context`.
+
+## Scope and storage
+
+Entries written inside a Git working tree belong to that repository, including across linked
+worktrees. Entries written outside Git or with `log --global` are global. `read` defaults to the
+current project inside Git and global entries outside Git; `context` combines the current project
+with global entries. Use `--all` when a command supports it to include every project.
+
+Dear Diary stores entry prose, timestamps, mood, tags, model, harness, working directory, and Git
+project identity. The database is `deardiary.db` in:
+
+- Linux: `$XDG_DATA_HOME/deardiary` or `~/.local/share/deardiary`
+- macOS: `~/Library/Application Support/deardiary`
+- Windows: `%APPDATA%\deardiary`
+
+Set `DEARDIARY_HOME` to an absolute directory to override that location. Dear Diary itself never
+sends or syncs diary data; as with any agent tool, content an agent reads may be processed by the
+agent provider you chose.
 
 ## Setup and passive guidance
 
-Run `npx -y deardiary setup` to preview and install detected harness integrations, shared
-skill copies, and global passive guidance. The guidance gives Codex and Claude a concise,
-always-available policy for recognizing a diary-worthy blocker, reusable win, or actionable
-observation and invoking the Dear Diary skill at a natural pause. The skill owns the active
-record-or-recall workflow; it is not a background logger.
+Setup copies the Dear Diary skill, registers `npx -y @p4cs/deardiary mcp` for detected harnesses,
+and manages a small passive-guidance section. The skill decides how to record or recall an entry;
+the guidance only tells an agent when that skill may be useful. Dear Diary is not a background
+logger.
 
-Guidance scope is explicit and predictable:
+```bash
+# Global guidance (default)
+npx -y @p4cs/deardiary setup
 
-- `deardiary setup` or `deardiary setup --guidance global` manages user-level guidance
-  (the default).
-- `deardiary setup --guidance project` manages guidance in the Git repository containing
-  the current directory. It fails outside a Git working tree because project guidance can
-  become tracked team policy.
-- `deardiary setup --guidance none` installs integrations and skills without creating,
-  changing, or removing existing guidance.
-- `deardiary setup --check --guidance <scope>` performs a read-only drift check for exactly
-  that scope. `--yes` applies the preview without prompting and cannot be combined with
-  `--check`.
+# Guidance in the current Git repository
+npx -y @p4cs/deardiary setup --guidance project
 
-Dear Diary owns the section between `<!-- deardiary:start -->` and
-`<!-- deardiary:end -->`, plus the single separator newline it inserts immediately before the
-start marker in a non-empty file. Setup preserves surrounding instructions, backs up files before
-changes, repairs a drifted managed section, and refuses unsafe malformed or duplicate marker
-pairs. After setup changes guidance, restart open Codex or Claude sessions so they reload their
-instruction files.
+# Install MCP and skills without touching guidance
+npx -y @p4cs/deardiary setup --guidance none
 
-Setup registers `npx -y deardiary mcp`, so it remains usable without a global install. If
-`deardiary` is installed globally, you can manually use the direct `deardiary mcp` command in
-harness config for faster startup.
+# Read-only drift check
+npx -y @p4cs/deardiary setup --check --guidance global
+```
+
+`--yes` applies the preview without prompting and cannot be combined with `--check`. Project
+guidance requires a Git working tree because it can become tracked team policy.
+
+Dear Diary owns only the section between `<!-- deardiary:start -->` and `<!-- deardiary:end -->` in
+guidance files. It preserves surrounding instructions, backs up changed files, repairs a drifted
+managed section, and refuses malformed or duplicate marker pairs.
 
 ## Uninstall
 
-`deardiary uninstall` removes integrations, skill copies, and the managed global guidance
-section by default. Use `--guidance project` to select the managed section in the Git repository
-containing the current directory instead of the global section; integration and skill removal still
-follow the selected uninstall level. Uninstall never searches other repositories and restores the
-instruction file content outside Dear Diary's managed insertion exactly.
+```bash
+# Remove MCP integrations, skill copies, and managed global guidance
+npx -y @p4cs/deardiary uninstall
 
-The `integrations` level is the default. `--level cli` also prints the final global CLI removal
-command while retaining diary data; `--level full` additionally deletes the local diary data.
-Non-interactive `--yes` requires an explicit `--level`.
+# Also print the global npm removal command, while keeping diary data
+npx -y @p4cs/deardiary uninstall --level cli
 
-## Monorepo
+# Also delete the local diary database
+npx -y @p4cs/deardiary uninstall --level full
+```
 
-| Path             | Package                | Purpose                                                  |
-| ---------------- | ---------------------- | -------------------------------------------------------- |
-| `apps/cli`       | `deardiary`            | The published CLI (npx-runnable)                         |
-| `apps/marketing` | `@deardiary/marketing` | Astro one-pager                                          |
-| `packages/core`  | `@deardiary/core`      | db, schema, git/worktree resolution, queries, formatting |
-| `packages/mcp`   | `@deardiary/mcp`       | MCP server + tool definitions                            |
+Use `--guidance project` to remove the managed section in the current repository instead of global
+guidance. Uninstall never searches other repositories. Non-interactive `--yes` requires an explicit
+`--level`; an interactive full wipe requires the exact confirmation shown by the CLI.
 
-Toolchain: pnpm workspaces + [Vite+](https://viteplus.dev) (`vp`), Effect-TS, `tsgo` typechecking. Conventions borrowed from t3code (see `.repos/t3code`, local only).
+## Repository
+
+| Path             | Package                | Purpose                                                 |
+| ---------------- | ---------------------- | ------------------------------------------------------- |
+| `apps/cli`       | `deardiary-cli`        | CLI source; released as `@p4cs/deardiary` and its alias |
+| `apps/marketing` | `@deardiary/marketing` | Astro one-pager                                         |
+| `packages/core`  | `@deardiary/core`      | SQLite, Git identity, queries, and formatting           |
+| `packages/mcp`   | `@deardiary/mcp`       | MCP server and tool definitions                         |
+
+The monorepo uses pnpm workspaces and [Vite+](https://viteplus.dev). Local conventions are informed
+by the read-only t3code reference in `.repos/t3code`.

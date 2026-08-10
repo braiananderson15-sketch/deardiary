@@ -13,7 +13,9 @@
   },
   "files": [
     "dist",
-    "skill"
+    "skill",
+    "README.md",
+    "LICENSE"
   ],
   "type": "module",
   "scripts": {
@@ -36,6 +38,6 @@
     "typescript": "catalog:"
   },
   "engines": {
-    "node": ">=25.7.0"
+    "node": "^24.15.0 || >=26.0.0"
   }
 }

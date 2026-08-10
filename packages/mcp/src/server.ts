@@ -16,10 +16,12 @@ import * as Scope from "effect/Scope";
 
 import { type DiaryToolServices, registerDiaryTools } from "./tools.ts";
 
-export interface DiaryMcpServerOptions extends DiaryToolServices {}
+export interface DiaryMcpServerOptions extends DiaryToolServices {
+  readonly version: string;
+}
 
 export const makeDiaryMcpServer = (options: DiaryMcpServerOptions): McpServer => {
-  const server = new McpServer({ name: "deardiary", version: "0.0.1" });
+  const server = new McpServer({ name: "deardiary", version: options.version });
   registerDiaryTools(server, options);
   return server;
 };
@@ -37,7 +39,10 @@ interface AcquiredDiaryServer {
   readonly close: () => Promise<void>;
 }
 
-const acquireLiveDiaryServer = async (startupCwd: string): Promise<AcquiredDiaryServer> => {
+const acquireLiveDiaryServer = async (
+  startupCwd: string,
+  version: string,
+): Promise<AcquiredDiaryServer> => {
   const scope = await Effect.runPromise(Scope.make("sequential"));
   let closed = false;
   const close = async (): Promise<void> => {
@@ -53,6 +58,7 @@ const acquireLiveDiaryServer = async (startupCwd: string): Promise<AcquiredDiary
         entries: Context.get(services, Entries.EntryRepository),
         projects: Context.get(services, Projects.ProjectRepository),
         startupCwd,
+        version,
       }),
       close,
     };
@@ -63,17 +69,18 @@ const acquireLiveDiaryServer = async (startupCwd: string): Promise<AcquiredDiary
 };
 
 export interface StdioRunnerOptions {
+  readonly version: string;
   readonly startupCwd?: string;
   readonly stdin?: Readable;
   readonly stdout?: Writable;
 }
 
 /** Run one long-lived stdio MCP connection and release SQLite when its input closes. */
-export const runStdioServer = async (options: StdioRunnerOptions = {}): Promise<void> => {
+export const runStdioServer = async (options: StdioRunnerOptions): Promise<void> => {
   const startupCwd = options.startupCwd ?? process.cwd();
   const stdin = options.stdin ?? process.stdin;
   const stdout = options.stdout ?? process.stdout;
-  const acquired = await acquireLiveDiaryServer(startupCwd);
+  const acquired = await acquireLiveDiaryServer(startupCwd, options.version);
   const transport = new StdioServerTransport(stdin, stdout);
 
   let settled = false;

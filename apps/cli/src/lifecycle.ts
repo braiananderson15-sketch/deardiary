@@ -71,24 +71,24 @@ interface RemovedFile {
 const claudeEntry = {
   type: "stdio",
   command: "npx",
-  args: ["-y", "deardiary", "mcp"],
+  args: ["-y", "@p4cs/deardiary", "mcp"],
   env: {},
 } as const;
 
 const openCodeV1Entry = {
   type: "local",
-  command: ["npx", "-y", "deardiary", "mcp"],
+  command: ["npx", "-y", "@p4cs/deardiary", "mcp"],
   enabled: true,
 } as const;
 
 const openCodeV2Entry = {
   type: "local",
-  command: ["npx", "-y", "deardiary", "mcp"],
+  command: ["npx", "-y", "@p4cs/deardiary", "mcp"],
 } as const;
 
 const codexSection = `[mcp_servers.deardiary]
 command = "npx"
-args = ["-y", "deardiary", "mcp"]
+args = ["-y", "@p4cs/deardiary", "mcp"]
 startup_timeout_sec = 30
 `;
 
@@ -114,9 +114,9 @@ const hasCommand = (value: unknown, type: "local" | "stdio"): boolean =>
   isRecord(value) &&
   value.type === type &&
   (type === "stdio"
-    ? (value.command === "npx" && sameJson(value.args, ["-y", "deardiary", "mcp"])) ||
+    ? (value.command === "npx" && sameJson(value.args, ["-y", "@p4cs/deardiary", "mcp"])) ||
       (value.command === "deardiary" && sameJson(value.args, ["mcp"]))
-    : sameJson(value.command, ["npx", "-y", "deardiary", "mcp"]) ||
+    : sameJson(value.command, ["npx", "-y", "@p4cs/deardiary", "mcp"]) ||
       sameJson(value.command, ["deardiary", "mcp"]));
 
 const readFile = (path: string): string | null => {
@@ -239,7 +239,7 @@ const codexSectionIsCurrent = (
   const body = text.slice(section.start, section.end);
   const packageRunner =
     /^\s*command\s*=\s*["']npx["']\s*(?:#.*)?$/mu.test(body) &&
-    /^\s*args\s*=\s*\[\s*["']-y["']\s*,\s*["']deardiary["']\s*,\s*["']mcp["']\s*\]\s*(?:#.*)?$/mu.test(
+    /^\s*args\s*=\s*\[\s*["']-y["']\s*,\s*["']@p4cs\/deardiary["']\s*,\s*["']mcp["']\s*\]\s*(?:#.*)?$/mu.test(
       body,
     ) &&
     /^\s*startup_timeout_sec\s*=\s*[1-9][0-9]*(?:\.[0-9]+)?\s*(?:#.*)?$/mu.test(body);
@@ -271,7 +271,7 @@ const repairCodexSection = (
         : `${body.slice(0, headerEnd + 1)}${replacement}\n${body.slice(headerEnd + 1)}`;
   };
   replaceOrInsert(/^\s*command\s*=.*$/mu, 'command = "npx"');
-  replaceOrInsert(/^\s*args\s*=.*$/mu, 'args = ["-y", "deardiary", "mcp"]');
+  replaceOrInsert(/^\s*args\s*=.*$/mu, 'args = ["-y", "@p4cs/deardiary", "mcp"]');
   if (!/^\s*startup_timeout_sec\s*=\s*[1-9][0-9]*(?:\.[0-9]+)?\s*(?:#.*)?$/mu.test(body)) {
     replaceOrInsert(/^\s*startup_timeout_sec\s*=.*$/mu, "startup_timeout_sec = 30");
   }
@@ -665,7 +665,7 @@ const changePreview = (plan: PlannedFile): ReadonlyArray<string> => {
   if (isMcp)
     return [
       `    - deardiary entry: ${before}`,
-      '    + command: "npx"; args: ["-y", "deardiary", "mcp"]',
+      '    + command: "npx"; args: ["-y", "@p4cs/deardiary", "mcp"]',
     ];
   if (isGuidance)
     return [
@@ -700,7 +700,7 @@ export const setup = async (options: SetupOptions): Promise<LifecycleResult> => 
       return `  UPDATE ${plan.path}\n${diff}\n    backup: ${nextBackupPath(plan.path)}`;
     }),
     ...skippedHarnessLines(options.paths, harnesses).map((line) => `  ${line}`),
-    "  MCP command: npx -y deardiary mcp",
+    "  MCP command: npx -y @p4cs/deardiary mcp",
   ];
   if (changes.length === 0) {
     return { exitCode: 0, output: [...preview, "Dear Diary setup is already current."].join("\n") };
@@ -736,7 +736,9 @@ export const setup = async (options: SetupOptions): Promise<LifecycleResult> => 
     output.push(`Setup failed: ${errorMessage(error)}`);
     return { exitCode: 1, output: output.join("\n") };
   }
-  output.push("Setup complete. Restart open harness sessions, then run 'npx -y deardiary doctor'.");
+  output.push(
+    "Setup complete. Restart open harness sessions, then run 'npx -y @p4cs/deardiary doctor'.",
+  );
   return { exitCode: 0, output: output.join("\n") };
 };
 
@@ -871,7 +873,7 @@ export interface UninstallOptions {
   readonly cwd?: string;
 }
 
-const cliRemovalInstruction = "Remove the CLI after this command exits: npm rm -g deardiary";
+const cliRemovalInstruction = "Remove the CLI after this command exits: npm rm -g @p4cs/deardiary";
 export const fullWipeConfirmation = "DELETE DEAR DIARY DATA";
 
 export const uninstall = async (options: UninstallOptions): Promise<LifecycleResult> => {
@@ -891,7 +893,7 @@ export const uninstall = async (options: UninstallOptions): Promise<LifecycleRes
     `Uninstall preview (level: ${options.level}):`,
     ...removals.map((removal) => `  REMOVE ${removal.label}: ${removal.path}`),
     ...(dataExists ? [`  DELETE data: ${options.paths.dataDir}`] : []),
-    ...(options.level === "integrations" ? [] : [`  CLI instruction: npm rm -g deardiary`]),
+    ...(options.level === "integrations" ? [] : [`  CLI instruction: npm rm -g @p4cs/deardiary`]),
   ];
   if (!options.yes) {
     const required = options.level === "full" ? fullWipeConfirmation : "yes";
@@ -1056,7 +1058,7 @@ export const doctor = async (options: DoctorOptions): Promise<LifecycleResult> =
       if (plan.status === "current") lines.push(`OK ${plan.label}: ${plan.path}`);
       else
         lines.push(
-          `WARN ${plan.label}: ${plan.status}; run 'npx -y deardiary setup' (${plan.path})`,
+          `WARN ${plan.label}: ${plan.status}; run 'npx -y @p4cs/deardiary setup' (${plan.path})`,
         );
     }
     lines.push(...skippedHarnessLines(options.paths, harnesses));

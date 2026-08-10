@@ -73,6 +73,7 @@ describe("Dear Diary MCP server", () => {
       entries: Context.get(services, Entries.EntryRepository),
       projects: Context.get(services, Projects.ProjectRepository),
       startupCwd,
+      version: "9.8.7-test",
     });
     const client = new Client({ name: "deardiary-tests", version: "1.0.0" });
     const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
@@ -80,6 +81,10 @@ describe("Dear Diary MCP server", () => {
     try {
       await server.connect(serverTransport);
       await client.connect(clientTransport);
+      expect(client.getServerVersion()).toMatchObject({
+        name: "deardiary",
+        version: "9.8.7-test",
+      });
 
       const listed = await client.listTools();
       expect(listed.tools.map((tool) => tool.name)).toEqual([

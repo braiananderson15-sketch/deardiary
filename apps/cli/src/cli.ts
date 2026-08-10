@@ -394,7 +394,10 @@ export const run = async (
   }
   if (parsed.kind === "mcp") {
     try {
-      await runStdioServer({ startupCwd: NodePath.resolve(options.cwd ?? process.cwd()) });
+      await runStdioServer({
+        startupCwd: NodePath.resolve(options.cwd ?? process.cwd()),
+        version,
+      });
       return 0;
     } catch (error) {
       io.stderr(`deardiary: ${errorMessage(error)}`);
