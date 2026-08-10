@@ -1,6 +1,11 @@
 import { defineConfig } from "vite-plus";
 
 export default defineConfig({
+  run: {
+    cache: {
+      scripts: true,
+    },
+  },
   staged: { "*": "vp fmt" },
   fmt: {
     ignorePatterns: [".repos/**", "**/.astro/**", "dist", "node_modules", "pnpm-lock.yaml"],
