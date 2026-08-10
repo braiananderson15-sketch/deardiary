@@ -1,11 +1,11 @@
 ---
-const packageCommand = "npx -y @p4cs/deardiary";
+const packageCommand = "npx -y @p4cs/deardiary@latest";
 const setupPrompt = `Set up Dear Diary for the coding agents in this environment.
 
 1. Confirm Node.js 24.15.0+ LTS or Node.js 26+ is available.
-2. Run: npx -y @p4cs/deardiary setup
+2. Run: npx -y @p4cs/deardiary@latest setup
 3. Review the preview with me before accepting it.
-4. Restart any open agent sessions, then run: npx -y @p4cs/deardiary doctor
+4. Restart any open agent sessions, then run: npx -y @p4cs/deardiary@latest doctor
 
 Do not install a daemon or send diary data anywhere.`;
 ---
@@ -122,6 +122,8 @@ Do not install a daemon or send diary data anywhere.`;
             </div>
             <p class="small">
               Already set up? Run <code>{packageCommand} doctor</code> for a read-only health check.
+              The <code>@latest</code> tag prevents npm from silently selecting an older,
+              engine-compatible release.
             </p>
           </div>
 

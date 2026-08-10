@@ -14,7 +14,7 @@
 **Architecture.**
 
 - Stateless: CLI is the engine; `packages/mcp` wraps `packages/core`; each harness spawns `deardiary mcp` per session
-- Cold-start strategy: wizard registers `npx -y @p4cs/deardiary mcp` with a bumped timeout;
+- Cold-start strategy: wizard registers `npx -y @p4cs/deardiary@latest mcp` with a bumped timeout;
   `deardiary bench-startup` + `doctor` verify; a service is only reconsidered if measurements hurt
 - **Effect-TS throughout** the TS codebase, with `.repos/t3code` as the in-repo style reference
 

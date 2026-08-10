@@ -11,20 +11,23 @@ service, or network code. The package is open source under the [MIT License](./L
 Dear Diary requires Node.js 24.15.0 or newer in the Node 24 LTS line, or Node.js 26 or newer.
 
 ```bash
-npx -y @p4cs/deardiary setup
-npx -y @p4cs/deardiary doctor
+npx -y @p4cs/deardiary@latest setup
+npx -y @p4cs/deardiary@latest doctor
 ```
 
 `setup` previews its changes, asks before writing, and configures detected Claude Code, Codex, and
 OpenCode installations. Restart open agent sessions after it completes. The configured MCP command
 uses `npx`, so a global install is not required.
 
+The explicit `@latest` tag prevents npm from silently selecting an older, engine-compatible
+release. Use a supported Node.js version as listed above.
+
 You can also use the diary directly:
 
 ```bash
-npx -y @p4cs/deardiary log --mood win --tag release "The packed-package smoke test caught a stale command."
-npx -y @p4cs/deardiary context
-npx -y @p4cs/deardiary read --mood win --limit 10
+npx -y @p4cs/deardiary@latest log --mood win --tag release "The packed-package smoke test caught a stale command."
+npx -y @p4cs/deardiary@latest context
+npx -y @p4cs/deardiary@latest read --mood win --limit 10
 ```
 
 `@p4cs/deardiary` is the canonical npm package. `deardiary-cli` remains available as a compatibility
@@ -46,8 +49,8 @@ alias. Both provide the `deardiary` executable when installed globally.
 | `uninstall`     | Remove integrations, the CLI, or all local data                  |
 | `mcp`           | Run the stdio MCP server                                         |
 
-Run `npx -y @p4cs/deardiary <command> --help` for command-specific options. The MCP server exposes
-exactly `diary_log`, `diary_read`, and `diary_context`.
+Run `npx -y @p4cs/deardiary@latest <command> --help` for command-specific options. The MCP server
+exposes exactly `diary_log`, `diary_read`, and `diary_context`.
 
 ## Scope and storage
 
@@ -69,23 +72,23 @@ agent provider you chose.
 
 ## Setup and passive guidance
 
-Setup copies the Dear Diary skill, registers `npx -y @p4cs/deardiary mcp` for detected harnesses,
-and manages a small passive-guidance section. The skill decides how to record or recall an entry;
-the guidance only tells an agent when that skill may be useful. Dear Diary is not a background
-logger.
+Setup copies the Dear Diary skill, registers `npx -y @p4cs/deardiary@latest mcp` for detected
+harnesses, and manages a small passive-guidance section. The skill decides how to record or recall
+an entry; the guidance only tells an agent when that skill may be useful. Dear Diary is not a
+background logger.
 
 ```bash
 # Global guidance (default)
-npx -y @p4cs/deardiary setup
+npx -y @p4cs/deardiary@latest setup
 
 # Guidance in the current Git repository
-npx -y @p4cs/deardiary setup --guidance project
+npx -y @p4cs/deardiary@latest setup --guidance project
 
 # Install MCP and skills without touching guidance
-npx -y @p4cs/deardiary setup --guidance none
+npx -y @p4cs/deardiary@latest setup --guidance none
 
 # Read-only drift check
-npx -y @p4cs/deardiary setup --check --guidance global
+npx -y @p4cs/deardiary@latest setup --check --guidance global
 ```
 
 `--yes` applies the preview without prompting and cannot be combined with `--check`. Project
@@ -99,13 +102,13 @@ managed section, and refuses malformed or duplicate marker pairs.
 
 ```bash
 # Remove MCP integrations, skill copies, and managed global guidance
-npx -y @p4cs/deardiary uninstall
+npx -y @p4cs/deardiary@latest uninstall
 
 # Also print the global npm removal command, while keeping diary data
-npx -y @p4cs/deardiary uninstall --level cli
+npx -y @p4cs/deardiary@latest uninstall --level cli
 
 # Also delete the local diary database
-npx -y @p4cs/deardiary uninstall --level full
+npx -y @p4cs/deardiary@latest uninstall --level full
 ```
 
 Use `--guidance project` to remove the managed section in the current repository instead of global

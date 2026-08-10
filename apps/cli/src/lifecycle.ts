@@ -71,24 +71,24 @@ interface RemovedFile {
 const claudeEntry = {
   type: "stdio",
   command: "npx",
-  args: ["-y", "@p4cs/deardiary", "mcp"],
+  args: ["-y", "@p4cs/deardiary@latest", "mcp"],
   env: {},
 } as const;
 
 const openCodeV1Entry = {
   type: "local",
-  command: ["npx", "-y", "@p4cs/deardiary", "mcp"],
+  command: ["npx", "-y", "@p4cs/deardiary@latest", "mcp"],
   enabled: true,
 } as const;
 
 const openCodeV2Entry = {
   type: "local",
-  command: ["npx", "-y", "@p4cs/deardiary", "mcp"],
+  command: ["npx", "-y", "@p4cs/deardiary@latest", "mcp"],
 } as const;
 
 const codexSection = `[mcp_servers.deardiary]
 command = "npx"
-args = ["-y", "@p4cs/deardiary", "mcp"]
+args = ["-y", "@p4cs/deardiary@latest", "mcp"]
 startup_timeout_sec = 30
 `;
 
@@ -114,9 +114,9 @@ const hasCommand = (value: unknown, type: "local" | "stdio"): boolean =>
   isRecord(value) &&
   value.type === type &&
   (type === "stdio"
-    ? (value.command === "npx" && sameJson(value.args, ["-y", "@p4cs/deardiary", "mcp"])) ||
+    ? (value.command === "npx" && sameJson(value.args, ["-y", "@p4cs/deardiary@latest", "mcp"])) ||
       (value.command === "deardiary" && sameJson(value.args, ["mcp"]))
-    : sameJson(value.command, ["npx", "-y", "@p4cs/deardiary", "mcp"]) ||
+    : sameJson(value.command, ["npx", "-y", "@p4cs/deardiary@latest", "mcp"]) ||
       sameJson(value.command, ["deardiary", "mcp"]));
 
 const readFile = (path: string): string | null => {
@@ -239,7 +239,7 @@ const codexSectionIsCurrent = (
   const body = text.slice(section.start, section.end);
   const packageRunner =
     /^\s*command\s*=\s*["']npx["']\s*(?:#.*)?$/mu.test(body) &&
-    /^\s*args\s*=\s*\[\s*["']-y["']\s*,\s*["']@p4cs\/deardiary["']\s*,\s*["']mcp["']\s*\]\s*(?:#.*)?$/mu.test(
+    /^\s*args\s*=\s*\[\s*["']-y["']\s*,\s*["']@p4cs\/deardiary@latest["']\s*,\s*["']mcp["']\s*\]\s*(?:#.*)?$/mu.test(
       body,
     ) &&
     /^\s*startup_timeout_sec\s*=\s*[1-9][0-9]*(?:\.[0-9]+)?\s*(?:#.*)?$/mu.test(body);
@@ -271,7 +271,7 @@ const repairCodexSection = (
         : `${body.slice(0, headerEnd + 1)}${replacement}\n${body.slice(headerEnd + 1)}`;
   };
   replaceOrInsert(/^\s*command\s*=.*$/mu, 'command = "npx"');
-  replaceOrInsert(/^\s*args\s*=.*$/mu, 'args = ["-y", "@p4cs/deardiary", "mcp"]');
+  replaceOrInsert(/^\s*args\s*=.*$/mu, 'args = ["-y", "@p4cs/deardiary@latest", "mcp"]');
   if (!/^\s*startup_timeout_sec\s*=\s*[1-9][0-9]*(?:\.[0-9]+)?\s*(?:#.*)?$/mu.test(body)) {
     replaceOrInsert(/^\s*startup_timeout_sec\s*=.*$/mu, "startup_timeout_sec = 30");
   }
@@ -665,7 +665,7 @@ const changePreview = (plan: PlannedFile): ReadonlyArray<string> => {
   if (isMcp)
     return [
       `    - deardiary entry: ${before}`,
-      '    + command: "npx"; args: ["-y", "@p4cs/deardiary", "mcp"]',
+      '    + command: "npx"; args: ["-y", "@p4cs/deardiary@latest", "mcp"]',
     ];
   if (isGuidance)
     return [
@@ -700,7 +700,7 @@ export const setup = async (options: SetupOptions): Promise<LifecycleResult> => 
       return `  UPDATE ${plan.path}\n${diff}\n    backup: ${nextBackupPath(plan.path)}`;
     }),
     ...skippedHarnessLines(options.paths, harnesses).map((line) => `  ${line}`),
-    "  MCP command: npx -y @p4cs/deardiary mcp",
+    "  MCP command: npx -y @p4cs/deardiary@latest mcp",
   ];
   if (changes.length === 0) {
     return { exitCode: 0, output: [...preview, "Dear Diary setup is already current."].join("\n") };
@@ -737,7 +737,7 @@ export const setup = async (options: SetupOptions): Promise<LifecycleResult> => 
     return { exitCode: 1, output: output.join("\n") };
   }
   output.push(
-    "Setup complete. Restart open harness sessions, then run 'npx -y @p4cs/deardiary doctor'.",
+    "Setup complete. Restart open harness sessions, then run 'npx -y @p4cs/deardiary@latest doctor'.",
   );
   return { exitCode: 0, output: output.join("\n") };
 };
@@ -1058,7 +1058,7 @@ export const doctor = async (options: DoctorOptions): Promise<LifecycleResult> =
       if (plan.status === "current") lines.push(`OK ${plan.label}: ${plan.path}`);
       else
         lines.push(
-          `WARN ${plan.label}: ${plan.status}; run 'npx -y @p4cs/deardiary setup' (${plan.path})`,
+          `WARN ${plan.label}: ${plan.status}; run 'npx -y @p4cs/deardiary@latest setup' (${plan.path})`,
         );
     }
     lines.push(...skippedHarnessLines(options.paths, harnesses));

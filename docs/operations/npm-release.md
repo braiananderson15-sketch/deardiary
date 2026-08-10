@@ -32,7 +32,7 @@ The packed-release smoke test requires each alias to contain its manifest, CLI b
 README, and license. It rejects unresolved workspace protocols, a wrong package name, a stale
 manifest or executable version, an invalid `deardiary` bin, and a Node engine that differs from the
 workspace requirement. It then exercises `--help`, isolated setup for Claude Code, Codex, and
-OpenCode, the canonical `npx -y @p4cs/deardiary mcp` generated configuration, isolated SQLite
+OpenCode, the canonical `npx -y @p4cs/deardiary@latest mcp` generated configuration, isolated SQLite
 log/read/statistics and integrity checks, and a real cold MCP handshake that must expose three
 tools after installing each local tarball with its resolved runtime dependencies. Any failure stops
 the job before publication.
@@ -59,9 +59,18 @@ After the workflow is green, verify the registry artifact with fresh npm and dat
 
 ```bash
 smoke_root="$(mktemp -d)"
+expected_version="<version>"
+
+test "$(npm view @p4cs/deardiary@latest version)" = "$expected_version"
+test "$(npm view deardiary-cli@latest version)" = "$expected_version"
+
 HOME="$smoke_root/home" \
 DEARDIARY_HOME="$smoke_root/data" \
-npx --yes --cache "$smoke_root/npm-cache" @p4cs/deardiary@<version> --version
+npx --yes --cache "$smoke_root/npm-cache" @p4cs/deardiary@latest --version
+
+npm view @p4cs/deardiary@<version> version
+npm view deardiary-cli@<version> version
 ```
 
-The command must print the workflow's exact release version. Remove `smoke_root` after inspection.
+The `@latest` launch and both exact-version lookups must print the workflow's release version.
+Remove `smoke_root` after inspection.

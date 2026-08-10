@@ -16,8 +16,8 @@ const expectedFiles = [
   "package/skill/SKILL.md",
 ];
 const packageNames = ["@p4cs/deardiary", "deardiary-cli"];
-const canonicalMcpCommand = "npx -y @p4cs/deardiary mcp";
-const legacyMcpCommand = "npx -y deardiary mcp";
+const canonicalMcpCommand = "npx -y @p4cs/deardiary@latest mcp";
+const removedMcpCommands = ["npx -y deardiary mcp", "npx -y @p4cs/deardiary mcp"];
 
 const fail = (message) => {
   throw new Error(message);
@@ -115,23 +115,22 @@ const assertSetup = (cliPath, smokeRoot, expectedSkill) => {
     output.includes(canonicalMcpCommand),
     "Setup output is missing the canonical MCP command.",
   );
-  assert(
-    !output.includes(legacyMcpCommand),
-    "Setup output contains the removed unscoped MCP command.",
-  );
+  for (const removedCommand of removedMcpCommands) {
+    assert(!output.includes(removedCommand), `Setup output contains '${removedCommand}'.`);
+  }
 
   const claude = readJson(paths.claudeConfig);
   assert(claude.mcpServers?.deardiary?.command === "npx", "Claude MCP command is not npx.");
   assert(
     JSON.stringify(claude.mcpServers?.deardiary?.args) ===
-      JSON.stringify(["-y", "@p4cs/deardiary", "mcp"]),
+      JSON.stringify(["-y", "@p4cs/deardiary@latest", "mcp"]),
     "Claude MCP arguments are not canonical.",
   );
 
   const codex = readFileSync(paths.codexConfig, "utf8");
   assert(codex.includes('command = "npx"'), "Codex MCP command is not npx.");
   assert(
-    codex.includes('args = ["-y", "@p4cs/deardiary", "mcp"]'),
+    codex.includes('args = ["-y", "@p4cs/deardiary@latest", "mcp"]'),
     "Codex MCP arguments are not canonical.",
   );
 
@@ -139,16 +138,9 @@ const assertSetup = (cliPath, smokeRoot, expectedSkill) => {
   const openCodeEntry = openCode.mcp?.servers?.deardiary ?? openCode.mcp?.deardiary;
   assert(
     JSON.stringify(openCodeEntry?.command) ===
-      JSON.stringify(["npx", "-y", "@p4cs/deardiary", "mcp"]),
+      JSON.stringify(["npx", "-y", "@p4cs/deardiary@latest", "mcp"]),
     "OpenCode MCP command is not canonical.",
   );
-
-  for (const path of [paths.claudeConfig, paths.codexConfig, paths.openCodeConfig]) {
-    assert(
-      !readFileSync(path, "utf8").includes(legacyMcpCommand),
-      `${path} contains the removed unscoped MCP command.`,
-    );
-  }
   for (const path of [
     join(paths.home, ".claude", "skills", "deardiary", "SKILL.md"),
     join(paths.home, ".agents", "skills", "deardiary", "SKILL.md"),

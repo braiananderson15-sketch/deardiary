@@ -10,7 +10,7 @@ Diary entries persist across sessions and projects.
 ## Use the diary
 
 - Use `diary_log` to record entries, `diary_read` for filtered history, and `diary_context` for current-project plus global context.
-- When MCP tools are unavailable, inspect `npx -y @p4cs/deardiary <command> --help`, then use the corresponding `log`, `read`, or `context` command.
+- When MCP tools are unavailable, inspect `npx -y @p4cs/deardiary@latest <command> --help`, then use the corresponding `log`, `read`, or `context` command. The explicit `@latest` tag prevents npm from silently selecting an older, engine-compatible release.
 
 ## Voice
 

@@ -103,9 +103,9 @@ describe("setup lifecycle", () => {
     expect(result).toEqual({ exitCode: 0, output: "Setup cancelled; no files changed." });
     expect(question).toContain("Setup preview (global user configuration)");
     expect(question).toContain(`CREATE ${paths.claudeConfig}`);
-    expect(question).toContain("MCP command: npx -y @p4cs/deardiary mcp");
+    expect(question).toContain("MCP command: npx -y @p4cs/deardiary@latest mcp");
     expect(question).toContain("- deardiary entry: absent");
-    expect(question).toContain('+ command: "npx"; args: ["-y", "@p4cs/deardiary", "mcp"]');
+    expect(question).toContain('+ command: "npx"; args: ["-y", "@p4cs/deardiary@latest", "mcp"]');
     expect(question).toContain("- skill copy: absent");
     expect(question).toContain("+ skill copy: canonical apps/cli/skill/SKILL.md");
     expect(NodeFs.existsSync(paths.homeDir)).toBe(true);
@@ -132,7 +132,7 @@ describe("setup lifecycle", () => {
     });
 
     expect(result.exitCode, result.output).toBe(0);
-    expect(result.output).toContain("run 'npx -y @p4cs/deardiary doctor'");
+    expect(result.output).toContain("run 'npx -y @p4cs/deardiary@latest doctor'");
     expect(result.output).toContain(`backup: ${paths.claudeConfig}.bak.1`);
     expect(NodeFs.readFileSync(`${paths.claudeConfig}.bak`, "utf8")).toBe("older backup");
     expect(NodeFs.readFileSync(`${paths.claudeConfig}.bak.1`, "utf8")).toBe(claudeOriginal);
@@ -146,7 +146,7 @@ describe("setup lifecycle", () => {
     expect(claude.mcpServers.deardiary).toEqual({
       type: "stdio",
       command: "npx",
-      args: ["-y", "@p4cs/deardiary", "mcp"],
+      args: ["-y", "@p4cs/deardiary@latest", "mcp"],
       env: {},
     });
     const codex = NodeFs.readFileSync(paths.codexConfig, "utf8");
@@ -154,14 +154,14 @@ describe("setup lifecycle", () => {
     expect(codex).toContain("[mcp_servers.old]");
     expect(codex).toContain("[mcp_servers.deardiary]");
     expect(codex).toContain('command = "npx"');
-    expect(codex).toContain('args = ["-y", "@p4cs/deardiary", "mcp"]');
+    expect(codex).toContain('args = ["-y", "@p4cs/deardiary@latest", "mcp"]');
     expect(codex).toContain("startup_timeout_sec = 30");
     const openCode = readJson(paths.openCodeConfig);
     expect(openCode.autoupdate).toBe(false);
     expect(openCode.mcp.other.command).toEqual(["other"]);
     expect(openCode.mcp.deardiary).toEqual({
       type: "local",
-      command: ["npx", "-y", "@p4cs/deardiary", "mcp"],
+      command: ["npx", "-y", "@p4cs/deardiary@latest", "mcp"],
       enabled: true,
     });
     expect(NodeFs.readFileSync(paths.claudeSkill, "utf8")).toBe(skillSource);
@@ -186,7 +186,7 @@ describe("setup lifecycle", () => {
     expect(openCode.mcp.servers.other.command).toEqual(["other"]);
     expect(openCode.mcp.servers.deardiary).toEqual({
       type: "local",
-      command: ["npx", "-y", "@p4cs/deardiary", "mcp"],
+      command: ["npx", "-y", "@p4cs/deardiary@latest", "mcp"],
     });
     expect(openCode.mcp.deardiary).toBeUndefined();
 
@@ -247,13 +247,13 @@ describe("setup lifecycle", () => {
     expect(readJson(paths.claudeConfig).mcpServers.deardiary).toEqual({
       type: "stdio",
       command: "npx",
-      args: ["-y", "@p4cs/deardiary", "mcp"],
+      args: ["-y", "@p4cs/deardiary@latest", "mcp"],
       env: { DEARDIARY_HOME: "/custom" },
       alwaysLoad: true,
     });
     const codex = NodeFs.readFileSync(paths.codexConfig, "utf8");
     expect(codex).toContain('command = "npx"');
-    expect(codex).toContain('args = ["-y", "@p4cs/deardiary", "mcp"]');
+    expect(codex).toContain('args = ["-y", "@p4cs/deardiary@latest", "mcp"]');
     expect(codex).toContain("enabled = true");
     expect(codex).toContain("startup_timeout_sec = 20");
     expect(codex).toContain("[mcp_servers.deardiary.env]");
@@ -262,7 +262,7 @@ describe("setup lifecycle", () => {
     const openCode = readJson(paths.openCodeConfig).mcp.servers.deardiary;
     expect(openCode).toEqual({
       type: "local",
-      command: ["npx", "-y", "@p4cs/deardiary", "mcp"],
+      command: ["npx", "-y", "@p4cs/deardiary@latest", "mcp"],
       disabled: false,
       codemode: false,
       timeout: { startup: 9000 },
@@ -285,21 +285,64 @@ describe("setup lifecycle", () => {
       `${JSON.stringify({ mcp: { deardiary: { type: "local", command: ["npx", "-y", "deardiary", "mcp"], enabled: true } } }, null, 2)}\n`,
     );
 
-    expect(checkSetup(paths, skillSource, allHarnesses).exitCode).toBe(1);
+    const drift = checkSetup(paths, skillSource, allHarnesses);
+    expect(drift.exitCode).toBe(1);
+    expect(drift.output).toContain("DRIFTED Claude Code MCP");
+    expect(drift.output).toContain("DRIFTED Codex MCP");
+    expect(drift.output).toContain("DRIFTED OpenCode MCP");
     await install(paths);
 
     expect(readJson(paths.claudeConfig).mcpServers.deardiary).toMatchObject({
       command: "npx",
-      args: ["-y", "@p4cs/deardiary", "mcp"],
+      args: ["-y", "@p4cs/deardiary@latest", "mcp"],
     });
     const codex = NodeFs.readFileSync(paths.codexConfig, "utf8");
     expect(codex).toContain('command = "npx"');
-    expect(codex).toContain('args = ["-y", "@p4cs/deardiary", "mcp"]');
+    expect(codex).toContain('args = ["-y", "@p4cs/deardiary@latest", "mcp"]');
     expect(codex).toContain("startup_timeout_sec = 30");
     expect(readJson(paths.openCodeConfig).mcp.deardiary.command).toEqual([
       "npx",
       "-y",
-      "@p4cs/deardiary",
+      "@p4cs/deardiary@latest",
+      "mcp",
+    ]);
+    expect(checkSetup(paths, skillSource, allHarnesses).exitCode).toBe(0);
+  });
+
+  it("repairs untagged scoped package launchers to the latest release", async () => {
+    const paths = makePaths();
+    write(
+      paths.claudeConfig,
+      `${JSON.stringify({ mcpServers: { deardiary: { type: "stdio", command: "npx", args: ["-y", "@p4cs/deardiary", "mcp"], env: {} } } }, null, 2)}\n`,
+    );
+    write(
+      paths.codexConfig,
+      `[mcp_servers.deardiary]\ncommand = "npx"\nargs = ["-y", "@p4cs/deardiary", "mcp"]\nstartup_timeout_sec = 30\n`,
+    );
+    write(
+      paths.openCodeConfig,
+      `${JSON.stringify({ mcp: { deardiary: { type: "local", command: ["npx", "-y", "@p4cs/deardiary", "mcp"], enabled: true } } }, null, 2)}\n`,
+    );
+
+    const drift = checkSetup(paths, skillSource, allHarnesses);
+    expect(drift.exitCode).toBe(1);
+    expect(drift.output).toContain("DRIFTED Claude Code MCP");
+    expect(drift.output).toContain("DRIFTED Codex MCP");
+    expect(drift.output).toContain("DRIFTED OpenCode MCP");
+
+    await install(paths);
+
+    expect(readJson(paths.claudeConfig).mcpServers.deardiary).toMatchObject({
+      command: "npx",
+      args: ["-y", "@p4cs/deardiary@latest", "mcp"],
+    });
+    expect(NodeFs.readFileSync(paths.codexConfig, "utf8")).toContain(
+      'args = ["-y", "@p4cs/deardiary@latest", "mcp"]',
+    );
+    expect(readJson(paths.openCodeConfig).mcp.deardiary.command).toEqual([
+      "npx",
+      "-y",
+      "@p4cs/deardiary@latest",
       "mcp",
     ]);
     expect(checkSetup(paths, skillSource, allHarnesses).exitCode).toBe(0);
@@ -768,7 +811,7 @@ describe("doctor and startup benchmark", () => {
     });
     expect(result.exitCode).toBe(1);
     expect(result.output).toContain("FAIL Data:");
-    expect(result.output).toContain("run 'npx -y @p4cs/deardiary setup'");
+    expect(result.output).toContain("run 'npx -y @p4cs/deardiary@latest setup'");
     expect(result.output).toContain("FAIL MCP startup failed: handshake timed out");
   });
 
