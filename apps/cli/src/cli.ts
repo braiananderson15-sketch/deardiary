@@ -14,6 +14,7 @@ import { runStdioServer } from "@deardiary/mcp/server";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 
+import cliPackage from "../package.json" with { type: "json" };
 import {
   CliUsageError,
   type CommandName,
@@ -34,7 +35,7 @@ import {
   uninstall,
 } from "./lifecycle.ts";
 
-export const version = "0.0.1";
+export const version = cliPackage.version;
 
 const rootHelp = `Dear Diary — a local diary for coding agents
 

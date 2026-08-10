@@ -1,0 +1,170 @@
+name: Publish npm packages
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: npm-publish-main
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Validate on Ubuntu ARM
+    runs-on: blacksmith-4vcpu-ubuntu-2404-arm
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          sparse-checkout: |
+            /*
+            !/.repos/
+          sparse-checkout-cone-mode: false
+
+      - name: Setup Vite+
+        uses: voidzero-dev/setup-vp@v1.17.0
+        with:
+          node-version-file: package.json
+          cache: true
+          run-install: true
+
+      - name: Check formatting
+        run: vp fmt --check
+
+      - name: Lint
+        run: vp lint
+
+      - name: Typecheck
+        run: vp run -r typecheck
+
+      - name: Test
+        run: vp run -r test
+
+      - name: Build CLI
+        run: vp run --filter deardiary-cli build
+
+  publish:
+    name: Publish to npm
+    needs: validate
+    # npm trusted publishing currently accepts only GitHub-hosted runners.
+    # Keep validation on Blacksmith ARM and this minimal OIDC job on GitHub ARM.
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          sparse-checkout: |
+            /*
+            !/.repos/
+          sparse-checkout-cone-mode: false
+
+      - name: Setup Vite+
+        uses: voidzero-dev/setup-vp@v1.17.0
+        with:
+          node-version-file: package.json
+          cache: false
+          run-install: true
+
+      - id: release
+        name: Resolve release version
+        env:
+          RUN_NUMBER: ${{ github.run_number }}
+        run: |
+          node --input-type=module <<'NODE'
+          import { appendFileSync, readFileSync, writeFileSync } from "node:fs";
+
+          const path = "apps/cli/package.json";
+          const manifest = JSON.parse(readFileSync(path, "utf8"));
+          const match = /^(\d+)\.(\d+)\.(\d+)$/.exec(manifest.version);
+          const runNumber = Number.parseInt(process.env.RUN_NUMBER ?? "", 10);
+
+          if (match === null || !Number.isSafeInteger(runNumber) || runNumber < 1) {
+            throw new Error(`Cannot derive a release from version '${manifest.version}' and run '${process.env.RUN_NUMBER}'.`);
+          }
+
+          const version = `${match[1]}.${match[2]}.${Number(match[3]) + runNumber}`;
+          manifest.version = version;
+          writeFileSync(path, `${JSON.stringify(manifest, null, 2)}\n`);
+          appendFileSync(process.env.GITHUB_OUTPUT, `version=${version}\n`);
+          console.log(`Publishing ${version}`);
+          NODE
+
+      - name: Build release CLI
+        run: vp run --filter deardiary-cli build
+
+      - name: Pack release aliases
+        env:
+          RELEASE_VERSION: ${{ steps.release.outputs.version }}
+        run: |
+          set -euo pipefail
+          pack_dir="$RUNNER_TEMP/npm-packages"
+          mkdir -p "$pack_dir"
+
+          for package_name in "@p4cs/deardiary" "deardiary-cli"; do
+            npm pkg set "name=$package_name" --prefix apps/cli
+            safe_name="${package_name//@/scope-}"
+            safe_name="${safe_name//\//-}"
+            (
+              cd apps/cli
+              vp pm pack --out "$pack_dir/$safe_name-$RELEASE_VERSION.tgz"
+            )
+          done
+
+          npm pkg set "name=deardiary-cli" --prefix apps/cli
+
+          for tarball in "$pack_dir"/*.tgz; do
+            if tar -xOf "$tarball" package/package.json | grep -Eq '"(catalog|workspace):'; then
+              echo "Unresolved workspace protocol in $tarball" >&2
+              exit 1
+            fi
+          done
+
+      - name: Publish release aliases
+        env:
+          RELEASE_VERSION: ${{ steps.release.outputs.version }}
+        run: |
+          set -euo pipefail
+          pack_dir="$RUNNER_TEMP/npm-packages"
+
+          publish_if_missing() {
+            local package_name="$1"
+            local tarball="$2"
+            local published
+            published="$(npm view "$package_name@$RELEASE_VERSION" version 2>/dev/null || true)"
+            if [[ "$published" == "$RELEASE_VERSION" ]]; then
+              echo "$package_name@$RELEASE_VERSION is already published; skipping."
+              return
+            fi
+            npm publish "$tarball" --access public
+          }
+
+          # Publish the canonical scoped package before its compatibility alias.
+          publish_if_missing "@p4cs/deardiary" "$pack_dir/scope-p4cs-deardiary-$RELEASE_VERSION.tgz"
+          publish_if_missing "deardiary-cli" "$pack_dir/deardiary-cli-$RELEASE_VERSION.tgz"
+
+      - name: Verify registry versions
+        env:
+          RELEASE_VERSION: ${{ steps.release.outputs.version }}
+        run: |
+          set -euo pipefail
+          for package_name in "@p4cs/deardiary" "deardiary-cli"; do
+            published=""
+            for attempt in {1..10}; do
+              published="$(npm view "$package_name@$RELEASE_VERSION" version 2>/dev/null || true)"
+              if [[ "$published" == "$RELEASE_VERSION" ]]; then
+                break
+              fi
+              sleep 3
+            done
+            test "$published" = "$RELEASE_VERSION"
+          done

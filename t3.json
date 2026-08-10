@@ -6,6 +6,16 @@
       "command": "vp i",
       "icon": "configure",
       "runOnWorktreeCreate": true
+    },
+    {
+      "name": "Check",
+      "command": "vp run typecheck && vp run lint && vp run test",
+      "icon": "test"
+    },
+    {
+      "name": "Dev Marketing",
+      "command": "vp run dev:web",
+      "icon": "play"
     }
   ]
 }

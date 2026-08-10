@@ -6,6 +6,8 @@ import { fileURLToPath } from "node:url";
 
 import { afterEach, describe, expect, it } from "@effect/vitest";
 
+import cliPackage from "../package.json" with { type: "json" };
+
 const cliPath = fileURLToPath(new URL("../src/cli.ts", import.meta.url));
 const temporaryRoots: Array<string> = [];
 
@@ -105,7 +107,7 @@ describe("CLI surface", () => {
 
     const version = runCli(["--version"], { home: blockingPath });
     expectSuccess(version);
-    expect(version.stdout).toBe("0.0.1\n");
+    expect(version.stdout).toBe(`${cliPackage.version}\n`);
 
     const unknown = runCli(["wat"], { home: blockingPath });
     expect(unknown.status).toBe(2);
