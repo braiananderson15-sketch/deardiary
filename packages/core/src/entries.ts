@@ -34,6 +34,7 @@ export type Tag = typeof Tag.Type;
 export class Entry extends Schema.Class<Entry>("Entry")({
   id: Schema.String.check(Schema.isUUID()),
   projectId: Schema.NullOr(Schema.String.check(Schema.isUUID())),
+  projectRootPath: Schema.NullOr(Schema.NonEmptyString),
   timestamp: UtcIsoTimestamp,
   model: Schema.NullOr(Schema.NonEmptyString),
   harness: Schema.NullOr(Schema.NonEmptyString),
@@ -198,6 +199,7 @@ export class EntryRepository extends Context.Service<
 const EntryDbRow = Schema.Struct({
   id: Schema.String.check(Schema.isUUID()),
   projectId: Schema.NullOr(Schema.String.check(Schema.isUUID())),
+  projectRootPath: Schema.NullOr(Schema.NonEmptyString),
   timestamp: UtcIsoTimestamp,
   model: Schema.NullOr(Schema.NonEmptyString),
   harness: Schema.NullOr(Schema.NonEmptyString),
@@ -491,6 +493,21 @@ const validateLimit = (
 };
 
 const selectEntryColumns = `
+  entries.id AS "id",
+  entries.project_id AS "projectId",
+  projects.root_path AS "projectRootPath",
+  entries.ts AS "timestamp",
+  entries.model AS "model",
+  entries.harness AS "harness",
+  entries.mood AS "mood",
+  entries.tags AS "tags",
+  entries.cwd AS "cwd",
+  entries.body AS "body",
+  entries.updated_at AS "updatedAt",
+  entries.deleted_at AS "deletedAt"
+`;
+
+const insertReturningColumns = `
   id AS "id",
   project_id AS "projectId",
   ts AS "timestamp",
@@ -558,9 +575,9 @@ export const make = (options: EntryRepositoryOptions = {}) =>
             : sql`LIMIT ${limit} OFFSET ${offset}`;
       return sql<EntryDbRow>`
         SELECT ${sql.literal(selectEntryColumns)}
-        FROM entries
+        FROM entries LEFT JOIN projects ON projects.id = entries.project_id
         WHERE ${makeWhere(scope, filters)}
-        ORDER BY ts ${direction}, id ${direction}
+        ORDER BY entries.ts ${direction}, entries.id ${direction}
         ${limitClause}
       `.pipe(
         Effect.mapError(toRepositoryError(operation)),
@@ -602,6 +619,7 @@ export const make = (options: EntryRepositoryOptions = {}) =>
       const candidate = yield* Entry.makeEffect({
         id,
         projectId: project?.id ?? null,
+        projectRootPath: project?.rootPath ?? null,
         timestamp,
         model: normalizeOptional(model),
         harness: normalizeOptional(harness),
@@ -617,7 +635,7 @@ export const make = (options: EntryRepositoryOptions = {}) =>
         ),
       );
 
-      const rows = yield* sql<EntryDbRow>`
+      const rows = yield* sql<Omit<EntryDbRow, "projectRootPath">>`
         INSERT INTO entries (
           id,
           project_id,
@@ -643,7 +661,7 @@ export const make = (options: EntryRepositoryOptions = {}) =>
           ${candidate.updatedAt},
           ${candidate.deletedAt}
         )
-        RETURNING ${sql.literal(selectEntryColumns)}
+        RETURNING ${sql.literal(insertReturningColumns)}
       `.pipe(Effect.mapError(toRepositoryError("append")));
       const row = rows[0];
       if (row === undefined) {
@@ -651,7 +669,10 @@ export const make = (options: EntryRepositoryOptions = {}) =>
           repositoryError("append", "decode", new Error("INSERT RETURNING produced no entry row")),
         );
       }
-      return yield* decodeEntryRow(row, "append");
+      return yield* decodeEntryRow(
+        { ...row, projectRootPath: project?.rootPath ?? null },
+        "append",
+      );
     });
 
     const read = Effect.fn("EntryRepository.read")(function* (input: ReadEntriesInput) {

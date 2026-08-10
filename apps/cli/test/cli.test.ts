@@ -302,10 +302,19 @@ describe("Git project scopes", () => {
     const linked = NodePath.join(temporaryDirectory("deardiary-worktree-"), "linked-a");
     runGit(projectA, ["worktree", "add", "--quiet", "-b", "linked-test", linked]);
     expectSuccess(runCli(["log", "linked A entry"], { cwd: linked, home }));
-    const converged = parseJson<ReadonlyArray<{ readonly body: string }>>(
-      runCli(["read", "--oldest", "--json"], { cwd: projectA, home }),
-    );
+    const converged = parseJson<
+      ReadonlyArray<{
+        readonly body: string;
+        readonly cwd: string;
+        readonly projectRootPath: string | null;
+      }>
+    >(runCli(["read", "--oldest", "--json"], { cwd: projectA, home }));
     expect(converged.map((entry) => entry.body)).toEqual(["project A entry", "linked A entry"]);
+    expect(converged).toMatchObject([
+      { cwd: projectA, projectRootPath: projectA },
+      { cwd: linked, projectRootPath: projectA },
+    ]);
+    expect(runCli(["read"], { cwd: projectA, home }).stdout).toContain(`repo: ${projectA}`);
   });
 });
 

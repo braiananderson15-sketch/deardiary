@@ -77,6 +77,7 @@ describe("deardiary mcp stdio", () => {
         body: "stdio persisted entry",
         mood: "idea",
         projectId: null,
+        projectRootPath: null,
       });
 
       const read = await client.callTool({

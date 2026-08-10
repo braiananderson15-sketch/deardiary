@@ -41,11 +41,18 @@ const tagsLabel = (entry: Entry): string | null => {
   return tags.length === 0 ? null : tags.join(", ");
 };
 
+const projectRootLabel = (entry: Entry): string | null =>
+  entry.projectRootPath === null || entry.projectRootPath === entry.cwd
+    ? null
+    : normalizeMetadata(entry.projectRootPath);
+
 const renderTerminalEntry = (entry: Entry): string => {
   const tags = tagsLabel(entry);
+  const projectRoot = projectRootLabel(entry);
   const header = [
     `${entry.timestamp} [${moodLabels[entry.mood]}] ${agentLabel(entry)}`,
     `${scopeLabel(entry)} · ${metadataOr(entry.cwd, "unknown cwd")}`,
+    ...(projectRoot === null ? [] : [`repo: ${projectRoot}`]),
     ...(tags === null ? [] : [`tags: ${tags}`]),
   ].join("\n");
   return `${header}\n\n${entry.body}`;
@@ -118,8 +125,10 @@ const renderMarkdownEntry = (entry: Entry): string => {
   const harness = markdownMetadataOr(entry.harness, "unknown harness");
   const cwd = markdownMetadataOr(entry.cwd, "unknown cwd");
   const tags = entry.tags.map((tag) => escapeMarkdownMetadata(tag)).filter((tag) => tag.length > 0);
+  const projectRoot = projectRootLabel(entry);
   const metadata = [
     `## ${entry.timestamp} · ${model}@${harness} · ${cwd}`,
+    ...(projectRoot === null ? [] : [`**Project:** ${escapeMarkdownMetadata(projectRoot)}`]),
     `**Mood:** ${entry.mood}`,
     ...(tags.length === 0 ? [] : [`**Tags:** ${tags.join(", ")}`]),
   ].join("\n");
@@ -134,6 +143,7 @@ export const renderMarkdown = (entries: ReadonlyArray<Entry>): string =>
 
 const renderContextEntry = (entry: Entry): string => {
   const tags = tagsLabel(entry);
+  const projectRoot = projectRootLabel(entry);
   const metadata = [
     entry.timestamp,
     scopeLabel(entry),
@@ -141,6 +151,7 @@ const renderContextEntry = (entry: Entry): string => {
     agentLabel(entry),
     metadataOr(entry.cwd, "unknown cwd"),
     ...(tags === null ? [] : [`tags: ${tags}`]),
+    ...(projectRoot === null ? [] : [`repo: ${projectRoot}`]),
   ].join(" | ");
   return `[${metadata}]\n${entry.body}`;
 };
