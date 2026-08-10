@@ -128,7 +128,16 @@ describe("CLI surface", () => {
     expect(uninstallHelp.stdout).toContain("--guidance <global|project>");
     expect(uninstallHelp.stdout).toContain("never searches other repositories");
 
-    const check = runCli(["setup", "--check"], { home: blockingPath });
+    const checkUserHome = temporaryDirectory("deardiary-check-home-");
+    const checkBin = temporaryDirectory("deardiary-check-bin-");
+    const fakeClaude = NodePath.join(checkBin, "claude");
+    NodeFs.writeFileSync(fakeClaude, "#!/bin/sh\nexit 0\n");
+    NodeFs.chmodSync(fakeClaude, 0o755);
+    const check = runCli(["setup", "--check"], {
+      home: blockingPath,
+      userHome: checkUserHome,
+      env: { PATH: checkBin },
+    });
     expect(check.status).toBe(1);
     expect(check.stderr).toBe("");
     expect(check.stdout).toContain("MISSING Claude Code MCP");
