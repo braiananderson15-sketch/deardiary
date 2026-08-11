@@ -15,7 +15,6 @@ import {
   type LifecyclePaths,
   resolveLifecyclePaths,
   setup,
-  syncInstalledSkills,
   uninstall,
 } from "../src/lifecycle.ts";
 
@@ -778,32 +777,6 @@ describe("uninstall lifecycle", () => {
     });
     expect(broadTopLevel.exitCode).toBe(1);
     expect(broadTopLevel.output).toContain(`Refusing unsafe data deletion target '${topLevel}'`);
-  });
-});
-
-describe("opportunistic skill sync", () => {
-  it("atomically refreshes existing copies without installing missing ones", async () => {
-    const paths = makePaths();
-    write(paths.claudeSkill, "outdated skill\n");
-
-    await syncInstalledSkills(paths, skillSource);
-
-    expect(NodeFs.readFileSync(paths.claudeSkill, "utf8")).toBe(skillSource);
-    expect(NodeFs.existsSync(paths.agentsSkill)).toBe(false);
-    expect(NodeFs.readdirSync(NodePath.dirname(paths.claudeSkill))).toEqual(["SKILL.md"]);
-  });
-
-  it("preserves an installed skill symlink while refreshing its target", async () => {
-    const paths = makePaths();
-    const target = NodePath.join(temporaryDirectory(), "dotfiles", "deardiary.md");
-    write(target, "outdated skill\n");
-    NodeFs.mkdirSync(NodePath.dirname(paths.agentsSkill), { recursive: true });
-    NodeFs.symlinkSync(target, paths.agentsSkill);
-
-    await syncInstalledSkills(paths, skillSource);
-
-    expect(NodeFs.lstatSync(paths.agentsSkill).isSymbolicLink()).toBe(true);
-    expect(NodeFs.readFileSync(target, "utf8")).toBe(skillSource);
   });
 });
 

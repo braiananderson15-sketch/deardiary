@@ -82,12 +82,8 @@ describe("deardiary mcp stdio", () => {
         "diary_read",
         "diary_context",
       ]);
-      await expect
-        .poll(() => NodeFs.readFileSync(claudeSkill, "utf8"), { timeout: 5_000 })
-        .toBe(skillSource);
-      await expect
-        .poll(() => NodeFs.readFileSync(agentsSkill, "utf8"), { timeout: 5_000 })
-        .toBe(skillSource);
+      expect(NodeFs.readFileSync(claudeSkill, "utf8")).toBe(skillSource);
+      expect(NodeFs.readFileSync(agentsSkill, "utf8")).toBe(skillSource);
 
       const logged = await client.callTool({
         name: "diary_log",
