@@ -10,6 +10,8 @@ import { afterEach, describe, expect, it } from "@effect/vitest";
 import cliPackage from "../package.json" with { type: "json" };
 
 const cliPath = fileURLToPath(new URL("../src/cli.ts", import.meta.url));
+const skillPath = fileURLToPath(new URL("../skill/SKILL.md", import.meta.url));
+const skillSource = NodeFs.readFileSync(skillPath, "utf8");
 const temporaryRoots: Array<string> = [];
 
 const temporaryDirectory = (prefix: string): string => {
@@ -41,13 +43,26 @@ describe("deardiary mcp stdio", () => {
     const root = temporaryDirectory("deardiary-mcp-stdio-");
     const cwd = NodePath.join(root, "cwd");
     const home = NodePath.join(root, "data");
+    const userHome = NodePath.join(root, "user");
+    const claudeSkill = NodePath.join(userHome, ".claude", "skills", "deardiary", "SKILL.md");
+    const agentsSkill = NodePath.join(userHome, ".agents", "skills", "deardiary", "SKILL.md");
     NodeFs.mkdirSync(cwd);
+    NodeFs.mkdirSync(NodePath.dirname(claudeSkill), { recursive: true });
+    NodeFs.mkdirSync(NodePath.dirname(agentsSkill), { recursive: true });
+    NodeFs.writeFileSync(claudeSkill, "outdated Claude skill\n");
+    NodeFs.writeFileSync(agentsSkill, "outdated shared skill\n");
 
     const transport = new StdioClientTransport({
       command: process.execPath,
       args: ["--experimental-strip-types", cliPath, "mcp"],
       cwd,
-      env: { DEARDIARY_HOME: home, NO_COLOR: "1" },
+      env: {
+        DEARDIARY_HOME: home,
+        HOME: userHome,
+        XDG_CONFIG_HOME: NodePath.join(userHome, ".config"),
+        CODEX_HOME: NodePath.join(userHome, ".codex"),
+        NO_COLOR: "1",
+      },
       stderr: "pipe",
     });
     let stderr = "";
@@ -67,6 +82,12 @@ describe("deardiary mcp stdio", () => {
         "diary_read",
         "diary_context",
       ]);
+      await expect
+        .poll(() => NodeFs.readFileSync(claudeSkill, "utf8"), { timeout: 5_000 })
+        .toBe(skillSource);
+      await expect
+        .poll(() => NodeFs.readFileSync(agentsSkill, "utf8"), { timeout: 5_000 })
+        .toBe(skillSource);
 
       const logged = await client.callTool({
         name: "diary_log",
