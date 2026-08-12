@@ -82,8 +82,6 @@ describe("deardiary mcp stdio", () => {
         "diary_read",
         "diary_context",
       ]);
-      expect(NodeFs.readFileSync(claudeSkill, "utf8")).toBe(skillSource);
-      expect(NodeFs.readFileSync(agentsSkill, "utf8")).toBe(skillSource);
 
       const logged = await client.callTool({
         name: "diary_log",
@@ -111,6 +109,8 @@ describe("deardiary mcp stdio", () => {
     }
 
     expect(transport.pid).toBeNull();
+    expect(NodeFs.readFileSync(claudeSkill, "utf8")).toBe(skillSource);
+    expect(NodeFs.readFileSync(agentsSkill, "utf8")).toBe(skillSource);
     expect(stderr).toBe("");
   }, 15_000);
 });

@@ -1,7 +1,9 @@
 import * as NodeFs from "node:fs";
+import * as NodeFsPromises from "node:fs/promises";
 import * as NodeOS from "node:os";
 import * as NodePath from "node:path";
 import * as NodeChildProcess from "node:child_process";
+import * as NodeCrypto from "node:crypto";
 import { performance } from "node:perf_hooks";
 import { DatabaseSync } from "node:sqlite";
 import { isDeepStrictEqual } from "node:util";
@@ -598,6 +600,62 @@ const atomicWrite = (path: string, content: string): void => {
     NodeFs.rmSync(temporary, { force: true });
     throw error;
   }
+};
+
+const atomicWriteAsync = async (path: string, content: string): Promise<void> => {
+  let destination = path;
+  let metadata = await NodeFsPromises.lstat(path);
+  if (metadata.isSymbolicLink()) {
+    try {
+      destination = await NodeFsPromises.realpath(path);
+      metadata = await NodeFsPromises.stat(destination);
+    } catch (error) {
+      throw new Error(`Cannot safely update dangling symlink '${path}'.`, { cause: error });
+    }
+  }
+  const temporary = NodePath.join(
+    NodePath.dirname(destination),
+    `.${NodePath.basename(destination)}.${String(process.pid)}.${NodeCrypto.randomUUID()}.tmp`,
+  );
+  try {
+    await NodeFsPromises.writeFile(temporary, content, { flag: "wx" });
+    await NodeFsPromises.chmod(temporary, metadata.mode);
+    await NodeFsPromises.rename(temporary, destination);
+  } catch (error) {
+    await NodeFsPromises.rm(temporary, { force: true });
+    throw error;
+  }
+};
+
+const syncInstalledSkill = async (path: string, source: string): Promise<void> => {
+  let installed: string;
+  try {
+    installed = await NodeFsPromises.readFile(path, "utf8");
+  } catch (error) {
+    if (isNodeError(error, "ENOENT")) return;
+    throw error;
+  }
+  if (installed !== source) await atomicWriteAsync(path, source);
+};
+
+/** Run a best-effort skill refresh outside the caller's startup path. */
+export const launchSkillSync = (sync: () => Promise<void>): void => {
+  setImmediate(() => {
+    void Promise.resolve()
+      .then(sync)
+      .catch(() => undefined);
+  });
+};
+
+/** Refresh skill copies that the user has already installed. */
+export const syncInstalledSkills = async (
+  paths: Pick<LifecyclePaths, "claudeSkill" | "agentsSkill">,
+  skillSource: string,
+): Promise<void> => {
+  await Promise.allSettled([
+    syncInstalledSkill(paths.claudeSkill, skillSource),
+    syncInstalledSkill(paths.agentsSkill, skillSource),
+  ]);
 };
 
 const assertFilesUnchanged = (
