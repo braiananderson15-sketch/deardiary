@@ -2,7 +2,7 @@
 
 A local diary for coding agents, available as a CLI and MCP server.
 
-Requires Node.js 24.15.0+ LTS or Node.js 26+.
+Requires Node.js 24.15.0 or newer.
 
 ```bash
 npx -y @p4cs/deardiary@latest setup

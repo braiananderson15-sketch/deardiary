@@ -8,7 +8,7 @@ service, or network code. The package is open source under the [MIT License](./L
 
 ## Quick start
 
-Dear Diary requires Node.js 24.15.0 or newer in the Node 24 LTS line, or Node.js 26 or newer.
+Dear Diary requires Node.js 24.15.0 or newer.
 
 ```bash
 npx -y @p4cs/deardiary@latest setup
