@@ -14,8 +14,8 @@
   `deardiary-cli` compatibility name, both at the same version and with the `latest` dist-tag.
 - pnpm creates the tarballs so `catalog:` and `workspace:` references are converted before npm
   publishes them.
-- Dear Diary supports Node.js 24 from `24.15.0` onward and Node.js 26 or newer. The exact engine
-  range is `^24.15.0 || >=26.0.0`, and the root and packed package declarations must agree.
+- Dear Diary supports Node.js `24.15.0` or newer. The exact engine range is `>=24.15.0`, and the
+  root and packed package declarations must agree.
 
 ## Publication gates
 
