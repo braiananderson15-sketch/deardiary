@@ -5,6 +5,12 @@ export default defineConfig({
     cache: {
       scripts: true,
     },
+    tasks: {
+      cli: {
+        command: "node --experimental-strip-types apps/cli/src/cli.ts",
+        cache: false,
+      },
+    },
   },
   staged: { "*": "vp fmt" },
   fmt: {

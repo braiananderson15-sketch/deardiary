@@ -25,6 +25,7 @@
     "test": "vp test run"
   },
   "dependencies": {
+    "@clack/prompts": "^1.7.0",
     "@effect/platform-node": "catalog:",
     "@modelcontextprotocol/sdk": "catalog:",
     "effect": "catalog:",

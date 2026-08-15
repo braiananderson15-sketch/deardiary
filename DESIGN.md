@@ -36,7 +36,11 @@
 - `packages/core` — db, schema, git/worktree resolution, queries, formatting
 - `packages/mcp` — MCP server, tool schemas, harness quirks
 
-**Setup wizard.** Interactive, detects harnesses, registers MCP + installs skill with backup + diff preview; global by default. The agent-driven setup path lives on the **website** as a copy-paste prompt, not a CLI flag.
+**Setup wizard.** Interactive, detects Codex, Claude Code, Grok Build, Cursor, and OpenCode; lets the
+user select any detected agents or enter a custom skills directory plus AGENTS.md path; registers MCP
+where supported and installs the skill with backup + diff preview. Custom AGENTS.md guidance lives
+inside replaceable managed markers so surrounding user instructions remain untouched. Global by
+default. The agent-driven setup path lives on the **website** as a copy-paste prompt, not a CLI flag.
 
 **Uninstall.** `deardiary uninstall` → three levels: (1) integrations only, (2) integrations + CLI, (3) full wipe incl. data dir (typed confirmation). `--yes` non-interactive per level; prints exactly what it removed; if globally installed, prints the final `npm rm -g` for the user.
 

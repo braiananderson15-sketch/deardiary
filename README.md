@@ -15,8 +15,9 @@ npx -y @p4cs/deardiary@latest setup
 npx -y @p4cs/deardiary@latest doctor
 ```
 
-`setup` previews its changes, asks before writing, and configures detected Claude Code, Codex, and
-OpenCode installations. Restart open agent sessions after it completes. The configured MCP command
+`setup` opens a small wizard that detects Codex, Claude Code, Grok Build, Cursor, and OpenCode. Pick
+the agents you want, or choose a custom skills directory and AGENTS.md file. It previews changes and
+asks before writing. Restart open agent sessions after it completes. The configured MCP command
 uses `npx`, so a global install is not required.
 
 The explicit `@latest` tag prevents npm from silently selecting an older, engine-compatible
@@ -72,9 +73,14 @@ agent provider you chose.
 
 ## Setup and passive guidance
 
-Setup copies the Dear Diary skill, registers `npx -y @p4cs/deardiary@latest mcp` for detected
-harnesses, and manages a small passive-guidance section. The skill decides how to record or recall
-an entry; the guidance only tells an agent when that skill may be useful. Dear Diary is not a
+Setup copies the Dear Diary skill into the native folder for each selected agent, registers
+`npx -y @p4cs/deardiary@latest mcp` where supported, and manages a small passive-guidance section.
+The Custom path choice asks for a skills directory (Dear Diary writes
+`deardiary/SKILL.md` inside it) and an exact AGENTS.md file. Existing AGENTS.md content is preserved; Dear Diary is appended between
+`<being_deardiary_section>` and `<end_deardiary_section>` so future runs can update only that
+section. Custom targets are saved in `setup.json` beside the local database so setup checks, doctor,
+skill refresh, and uninstall can find them again. The skill decides how to record or recall an
+entry; the guidance only tells an agent when that skill may be useful. Dear Diary is not a
 background logger.
 
 ```bash
@@ -94,9 +100,10 @@ npx -y @p4cs/deardiary@latest setup --check --guidance global
 `--yes` applies the preview without prompting and cannot be combined with `--check`. Project
 guidance requires a Git working tree because it can become tracked team policy.
 
-Dear Diary owns only the section between `<!-- deardiary:start -->` and `<!-- deardiary:end -->` in
-guidance files. It preserves surrounding instructions, backs up changed files, repairs a drifted
-managed section, and refuses malformed or duplicate marker pairs.
+Dear Diary owns only its marked section in guidance files: HTML comment markers for native targets,
+and `<being_deardiary_section>` / `<end_deardiary_section>` for a custom AGENTS.md target. It
+preserves surrounding instructions, backs up changed files, repairs a drifted managed section, and
+refuses malformed or duplicate marker pairs.
 
 ## Uninstall
 
