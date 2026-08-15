@@ -24,17 +24,44 @@ export interface LifecyclePaths {
   readonly openCodeConfig: string;
   readonly claudeSkill: string;
   readonly agentsSkill: string;
+  readonly grokSkill: string;
+  readonly cursorSkill: string;
+  readonly openCodeSkill: string;
   readonly claudeGuidance: string;
   readonly codexGuidance: string;
   readonly codexGuidanceOverride: string;
+  readonly openCodeGuidance: string;
   readonly dataDir: string;
   readonly databasePath: string;
+  readonly setupStatePath: string;
 }
 
 export interface DetectedHarnesses {
   readonly claude: boolean;
   readonly codex: boolean;
   readonly openCode: boolean;
+}
+
+export type SetupAgent = "codex" | "claude" | "grok" | "cursor" | "openCode";
+
+export type DetectedAgents = Readonly<Record<SetupAgent, boolean>>;
+
+export interface CustomSetupTarget {
+  /** Skills directory in which deardiary/SKILL.md is written. */
+  readonly skillFolder: string;
+  /** Exact instruction file to which the managed Dear Diary block is appended. */
+  readonly guidancePath: string;
+}
+
+export interface SetupSelection {
+  readonly agents: ReadonlyArray<SetupAgent>;
+  readonly custom?: CustomSetupTarget;
+  readonly customTargets?: ReadonlyArray<CustomSetupTarget>;
+}
+
+interface PersistedSetupState {
+  readonly version: 1;
+  readonly customTargets: ReadonlyArray<CustomSetupTarget>;
 }
 
 export interface ResolveLifecyclePathsOptions {
@@ -96,16 +123,28 @@ startup_timeout_sec = 30
 
 const guidanceStartMarker = "<!-- deardiary:start -->";
 const guidanceEndMarker = "<!-- deardiary:end -->";
+const customGuidanceStartMarker = "<being_deardiary_section>";
+const customGuidanceEndMarker = "<end_deardiary_section>";
 
-const guidanceBlock = (invocation: string): string => `${guidanceStartMarker}
+const guidanceBlock = (
+  invocation: string,
+  startMarker: string = guidanceStartMarker,
+  endMarker: string = guidanceEndMarker,
+): string => `${startMarker}
 
 ## Dear Diary
 
 When work reveals a blocker that cost meaningful effort, a reusable win, or an actionable observation worth carrying forward, invoke ${invocation} at the next natural pause. Also invoke it when the user asks to recall diary history.
-${guidanceEndMarker}`;
+${endMarker}`;
 
 const codexGuidanceBlock = guidanceBlock("`$deardiary`");
 const claudeGuidanceBlock = guidanceBlock("`/deardiary`");
+const portableGuidanceBlock = guidanceBlock("the `deardiary` skill");
+const customGuidanceBlock = guidanceBlock(
+  "the `deardiary` skill",
+  customGuidanceStartMarker,
+  customGuidanceEndMarker,
+);
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null && !Array.isArray(value);
@@ -350,21 +389,25 @@ interface GuidanceTarget {
   readonly label: string;
   readonly path: string;
   readonly block: string;
+  readonly startMarker?: string;
+  readonly endMarker?: string;
 }
 
 const managedBlockRange = (
   text: string,
   path: string,
+  startMarker: string = guidanceStartMarker,
+  endMarker: string = guidanceEndMarker,
 ): { readonly start: number; readonly end: number } | null => {
-  const starts = text.split(guidanceStartMarker).length - 1;
-  const ends = text.split(guidanceEndMarker).length - 1;
+  const starts = text.split(startMarker).length - 1;
+  const ends = text.split(endMarker).length - 1;
   if (starts === 0 && ends === 0) return null;
-  const start = text.indexOf(guidanceStartMarker);
-  const endMarkerStart = text.indexOf(guidanceEndMarker);
+  const start = text.indexOf(startMarker);
+  const endMarkerStart = text.indexOf(endMarker);
   if (starts !== 1 || ends !== 1 || start > endMarkerStart) {
     throw new Error(`Cannot safely update malformed Dear Diary guidance markers in '${path}'.`);
   }
-  return { start, end: endMarkerStart + guidanceEndMarker.length };
+  return { start, end: endMarkerStart + endMarker.length };
 };
 
 const appendGuidanceBlock = (text: string, block: string): string => {
@@ -375,7 +418,7 @@ const appendGuidanceBlock = (text: string, block: string): string => {
 const planGuidance = (target: GuidanceTarget): PlannedFile => {
   const previous = readFile(target.path);
   const text = previous ?? "";
-  const range = managedBlockRange(text, target.path);
+  const range = managedBlockRange(text, target.path, target.startMarker, target.endMarker);
   const current = range !== null && text.slice(range.start, range.end) === target.block;
   const next =
     current && previous !== null
@@ -481,20 +524,124 @@ const guidanceTargets = (
   ];
 };
 
+const selectedGuidanceTargets = (
+  paths: LifecyclePaths,
+  selection: SetupSelection,
+  scope: GuidanceScope,
+  cwd: string,
+): ReadonlyArray<GuidanceTarget> => {
+  const selected = new Set(selection.agents);
+  const targets: Array<GuidanceTarget> = [];
+  if (scope === "project" && selected.size > 0) {
+    const root = resolveGitRoot(cwd);
+    if (selected.has("claude")) {
+      targets.push({
+        label: "Claude Code project guidance",
+        path: NodePath.join(root, "CLAUDE.md"),
+        block: portableGuidanceBlock,
+      });
+    }
+    if (
+      ["codex", "grok", "cursor", "openCode"].some((agent) => selected.has(agent as SetupAgent))
+    ) {
+      targets.push({
+        label: "project AGENTS.md guidance",
+        path: NodePath.join(root, "AGENTS.md"),
+        block: portableGuidanceBlock,
+      });
+    }
+  } else if (scope === "global") {
+    if (selected.has("codex")) {
+      targets.push({
+        label: "Codex global guidance",
+        path: paths.codexGuidance,
+        block: portableGuidanceBlock,
+      });
+    }
+    if (selected.has("claude")) {
+      targets.push({
+        label: "Claude Code global guidance",
+        path: paths.claudeGuidance,
+        block: portableGuidanceBlock,
+      });
+    }
+    if (selected.has("openCode")) {
+      targets.push({
+        label: "OpenCode global guidance",
+        path: paths.openCodeGuidance,
+        block: portableGuidanceBlock,
+      });
+    }
+  }
+  if (scope !== "none") {
+    for (const target of customTargetsFor(selection)) {
+      targets.push({
+        label: "custom AGENTS.md guidance",
+        path: target.guidancePath,
+        block: customGuidanceBlock,
+        startMarker: customGuidanceStartMarker,
+        endMarker: customGuidanceEndMarker,
+      });
+    }
+  }
+  return targets;
+};
+
+const selectedSkillPlans = (
+  paths: LifecyclePaths,
+  skillSource: string,
+  selection: SetupSelection,
+): ReadonlyArray<PlannedFile> => {
+  const selected = new Set(selection.agents);
+  return [
+    ...(selected.has("codex") ? [planSkill("Codex skill", paths.agentsSkill, skillSource)] : []),
+    ...(selected.has("claude")
+      ? [planSkill("Claude Code skill", paths.claudeSkill, skillSource)]
+      : []),
+    ...(selected.has("grok") ? [planSkill("Grok Build skill", paths.grokSkill, skillSource)] : []),
+    ...(selected.has("cursor") ? [planSkill("Cursor skill", paths.cursorSkill, skillSource)] : []),
+    ...(selected.has("openCode")
+      ? [planSkill("OpenCode skill", paths.openCodeSkill, skillSource)]
+      : []),
+    ...customTargetsFor(selection).map((target) =>
+      planSkill("custom skill", customSkillPath(target), skillSource),
+    ),
+  ];
+};
+
+const uniquePlans = (plans: ReadonlyArray<PlannedFile>): ReadonlyArray<PlannedFile> => {
+  const seen = new Set<string>();
+  return plans.filter((plan) => {
+    const path = NodePath.normalize(plan.path);
+    if (seen.has(path)) return false;
+    seen.add(path);
+    return true;
+  });
+};
+
 const plansFor = (
   paths: LifecyclePaths,
   skillSource: string,
   harnesses: DetectedHarnesses,
   guidance: GuidanceScope = "global",
   cwd: string = process.cwd(),
-): ReadonlyArray<PlannedFile> => [
-  ...(harnesses.claude ? [planClaude(paths.claudeConfig)] : []),
-  ...(harnesses.codex ? [planCodex(paths.codexConfig)] : []),
-  ...(harnesses.openCode ? [planOpenCode(paths.openCodeConfig)] : []),
-  planSkill("Claude Code skill", paths.claudeSkill, skillSource),
-  planSkill("shared agents skill", paths.agentsSkill, skillSource),
-  ...guidanceTargets(paths, harnesses, guidance, cwd).map(planGuidance),
-];
+  selection?: SetupSelection,
+): ReadonlyArray<PlannedFile> =>
+  uniquePlans([
+    ...(harnesses.claude ? [planClaude(paths.claudeConfig)] : []),
+    ...(harnesses.codex ? [planCodex(paths.codexConfig)] : []),
+    ...(harnesses.openCode ? [planOpenCode(paths.openCodeConfig)] : []),
+    ...(selection === undefined
+      ? [
+          planSkill("Claude Code skill", paths.claudeSkill, skillSource),
+          planSkill("shared agents skill", paths.agentsSkill, skillSource),
+        ]
+      : selectedSkillPlans(paths, skillSource, selection)),
+    ...(selection === undefined
+      ? guidanceTargets(paths, harnesses, guidance, cwd)
+      : selectedGuidanceTargets(paths, selection, guidance, cwd)
+    ).map(planGuidance),
+  ]);
 
 const executableOnPath = (
   names: ReadonlyArray<string>,
@@ -520,11 +667,36 @@ export const detectHarnesses = (
   paths: LifecyclePaths,
   env: Readonly<Record<string, string | undefined>> = process.env,
 ): DetectedHarnesses => ({
-  claude: NodeFs.existsSync(paths.claudeConfig) || executableOnPath(["claude"], env),
-  codex: NodeFs.existsSync(paths.codexConfig) || executableOnPath(["codex"], env),
+  claude:
+    NodeFs.existsSync(paths.claudeConfig) ||
+    NodeFs.existsSync(NodePath.join(paths.homeDir, ".claude")) ||
+    executableOnPath(["claude"], env),
+  codex:
+    NodeFs.existsSync(paths.codexConfig) ||
+    NodeFs.existsSync(NodePath.dirname(paths.codexConfig)) ||
+    executableOnPath(["codex"], env),
   openCode:
-    NodeFs.existsSync(paths.openCodeConfig) || executableOnPath(["opencode", "opencode2"], env),
+    NodeFs.existsSync(paths.openCodeConfig) ||
+    NodeFs.existsSync(NodePath.dirname(paths.openCodeConfig)) ||
+    executableOnPath(["opencode", "opencode2"], env),
 });
+
+export const detectAgents = (
+  paths: LifecyclePaths,
+  env: Readonly<Record<string, string | undefined>> = process.env,
+): DetectedAgents => {
+  const harnesses = detectHarnesses(paths, env);
+  return {
+    codex: harnesses.codex,
+    claude: harnesses.claude,
+    grok:
+      NodeFs.existsSync(NodePath.join(paths.homeDir, ".grok")) || executableOnPath(["grok"], env),
+    cursor:
+      NodeFs.existsSync(NodePath.join(paths.homeDir, ".cursor")) ||
+      executableOnPath(["cursor", "cursor-agent"], env),
+    openCode: harnesses.openCode,
+  };
+};
 
 const ensureAbsolute = (path: string, source: string): string => {
   if (!NodePath.isAbsolute(path)) throw new Error(`${source} must be an absolute path.`);
@@ -559,11 +731,113 @@ export const resolveLifecyclePaths = (
     openCodeConfig: NodePath.join(configHome, "opencode", "opencode.json"),
     claudeSkill: NodePath.join(homeDir, ".claude", "skills", "deardiary", "SKILL.md"),
     agentsSkill: NodePath.join(homeDir, ".agents", "skills", "deardiary", "SKILL.md"),
+    grokSkill: NodePath.join(homeDir, ".grok", "skills", "deardiary", "SKILL.md"),
+    cursorSkill: NodePath.join(homeDir, ".cursor", "skills", "deardiary", "SKILL.md"),
+    openCodeSkill: NodePath.join(configHome, "opencode", "skills", "deardiary", "SKILL.md"),
     claudeGuidance: NodePath.join(homeDir, ".claude", "CLAUDE.md"),
     codexGuidance: NodePath.join(codexHome, "AGENTS.md"),
     codexGuidanceOverride: NodePath.join(codexHome, "AGENTS.override.md"),
+    openCodeGuidance: NodePath.join(configHome, "opencode", "AGENTS.md"),
     dataDir: data.dataDir,
     databasePath: data.databasePath,
+    setupStatePath: NodePath.join(data.dataDir, "setup.json"),
+  };
+};
+
+const normalizeCustomTarget = (target: CustomSetupTarget): CustomSetupTarget => {
+  const skillFolder = ensureAbsolute(target.skillFolder, "Custom skills folder");
+  return {
+    skillFolder:
+      NodePath.basename(skillFolder) === "deardiary" ? NodePath.dirname(skillFolder) : skillFolder,
+    guidancePath: ensureAbsolute(target.guidancePath, "Custom AGENTS.md path"),
+  };
+};
+
+function customSkillPath(target: CustomSetupTarget): string {
+  return NodePath.join(target.skillFolder, "deardiary", "SKILL.md");
+}
+
+const uniqueCustomTargets = (
+  targets: ReadonlyArray<CustomSetupTarget>,
+): ReadonlyArray<CustomSetupTarget> => {
+  const seen = new Set<string>();
+  return targets.map(normalizeCustomTarget).filter((target) => {
+    const key = `${target.skillFolder}\0${target.guidancePath}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+};
+
+const readSetupStateAt = (path: string): PersistedSetupState => {
+  let text: string | null;
+  try {
+    text = readFile(path);
+  } catch (error) {
+    if (isNodeError(error, "ENOTDIR")) return { version: 1, customTargets: [] };
+    throw error;
+  }
+  if (text === null) return { version: 1, customTargets: [] };
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(text);
+  } catch {
+    throw new Error(`Cannot safely read invalid Dear Diary setup state '${path}'.`);
+  }
+  if (!isRecord(parsed) || parsed.version !== 1 || !Array.isArray(parsed.customTargets)) {
+    throw new Error(`Cannot safely read malformed Dear Diary setup state '${path}'.`);
+  }
+  const customTargets = parsed.customTargets.map((target) => {
+    if (
+      !isRecord(target) ||
+      typeof target.skillFolder !== "string" ||
+      typeof target.guidancePath !== "string"
+    ) {
+      throw new Error(`Cannot safely read malformed Dear Diary setup state '${path}'.`);
+    }
+    return normalizeCustomTarget({
+      skillFolder: target.skillFolder,
+      guidancePath: target.guidancePath,
+    });
+  });
+  return { version: 1, customTargets: uniqueCustomTargets(customTargets) };
+};
+
+const readSetupState = (paths: LifecyclePaths): PersistedSetupState =>
+  readSetupStateAt(paths.setupStatePath);
+
+const setupStateText = (customTargets: ReadonlyArray<CustomSetupTarget>): string =>
+  formatJson({ version: 1, customTargets });
+
+const customTargetsFor = (selection: SetupSelection): ReadonlyArray<CustomSetupTarget> =>
+  uniqueCustomTargets([
+    ...(selection.customTargets ?? []),
+    ...(selection.custom === undefined ? [] : [selection.custom]),
+  ]);
+
+const selectionWithPersistedTargets = (
+  paths: LifecyclePaths,
+  selection: SetupSelection,
+): SetupSelection => ({
+  agents: selection.agents,
+  customTargets: uniqueCustomTargets([
+    ...readSetupState(paths).customTargets,
+    ...customTargetsFor(selection),
+  ]),
+});
+
+const planSetupState = (
+  paths: LifecyclePaths,
+  customTargets: ReadonlyArray<CustomSetupTarget>,
+): PlannedFile => {
+  const previous = readFile(paths.setupStatePath);
+  const next = setupStateText(customTargets);
+  return {
+    label: "custom path registry",
+    path: paths.setupStatePath,
+    previous,
+    next,
+    status: statusOf(previous, previous === next),
   };
 };
 
@@ -649,13 +923,22 @@ export const launchSkillSync = (sync: () => Promise<void>): void => {
 
 /** Refresh skill copies that the user has already installed. */
 export const syncInstalledSkills = async (
-  paths: Pick<LifecyclePaths, "claudeSkill" | "agentsSkill">,
+  paths: Pick<LifecyclePaths, "claudeSkill" | "agentsSkill" | "setupStatePath"> &
+    Partial<Pick<LifecyclePaths, "grokSkill" | "cursorSkill" | "openCodeSkill">>,
   skillSource: string,
 ): Promise<void> => {
-  await Promise.allSettled([
-    syncInstalledSkill(paths.claudeSkill, skillSource),
-    syncInstalledSkill(paths.agentsSkill, skillSource),
-  ]);
+  const customSkills = readSetupStateAt(paths.setupStatePath).customTargets.map((target) =>
+    customSkillPath(target),
+  );
+  const destinations = [
+    paths.claudeSkill,
+    paths.agentsSkill,
+    paths.grokSkill,
+    paths.cursorSkill,
+    paths.openCodeSkill,
+    ...customSkills,
+  ].filter((path): path is string => path !== undefined);
+  await Promise.allSettled(destinations.map((path) => syncInstalledSkill(path, skillSource)));
 };
 
 const assertFilesUnchanged = (
@@ -693,13 +976,19 @@ export const checkSetup = (
   harnesses: DetectedHarnesses = detectHarnesses(paths),
   guidance: GuidanceScope = "global",
   cwd: string = process.cwd(),
+  selection?: SetupSelection,
 ): LifecycleResult => {
   try {
-    const plans = plansFor(paths, skillSource, harnesses, guidance, cwd);
+    const effectiveSelection =
+      selection === undefined ? undefined : selectionWithPersistedTargets(paths, selection);
+    const plans = plansFor(paths, skillSource, harnesses, guidance, cwd, effectiveSelection);
     const current = plans.every((plan) => plan.status === "current");
     return {
       exitCode: current ? 0 : 1,
-      output: [...checkLines(plans), ...skippedHarnessLines(paths, harnesses)].join("\n"),
+      output: [
+        ...checkLines(plans),
+        ...(selection === undefined ? skippedHarnessLines(paths, harnesses) : []),
+      ].join("\n"),
     };
   } catch (error) {
     return { exitCode: 1, output: `ERROR ${errorMessage(error)}` };
@@ -712,6 +1001,7 @@ export interface SetupOptions {
   readonly yes: boolean;
   readonly confirm: (question: string) => Promise<string>;
   readonly harnesses?: DetectedHarnesses;
+  readonly selection?: SetupSelection;
   readonly guidance?: GuidanceScope;
   readonly cwd?: string;
 }
@@ -725,26 +1015,50 @@ const changePreview = (plan: PlannedFile): ReadonlyArray<string> => {
       `    - deardiary entry: ${before}`,
       '    + command: "npx"; args: ["-y", "@p4cs/deardiary@latest", "mcp"]',
     ];
-  if (isGuidance)
-    return [
-      `    - managed guidance: ${before}`,
-      `    + ${guidanceStartMarker} … ${guidanceEndMarker}`,
-    ];
+  if (plan.label === "custom path registry") {
+    return [`    - saved custom paths: ${before}`, "    + saved custom paths: current selection"];
+  }
+  if (isGuidance) {
+    const markers =
+      plan.label === "custom AGENTS.md guidance"
+        ? `${customGuidanceStartMarker} … ${customGuidanceEndMarker}`
+        : `${guidanceStartMarker} … ${guidanceEndMarker}`;
+    return [`    - managed guidance: ${before}`, `    + ${markers}`];
+  }
   return [`    - skill copy: ${before}`, "    + skill copy: canonical apps/cli/skill/SKILL.md"];
 };
 
 export const setup = async (options: SetupOptions): Promise<LifecycleResult> => {
   let plans: ReadonlyArray<PlannedFile>;
-  const harnesses = options.harnesses ?? detectHarnesses(options.paths);
+  const selected = new Set(options.selection?.agents ?? []);
+  const harnesses =
+    options.selection === undefined
+      ? (options.harnesses ?? detectHarnesses(options.paths))
+      : {
+          claude: selected.has("claude"),
+          codex: selected.has("codex"),
+          openCode: selected.has("openCode"),
+        };
   const guidance = options.guidance ?? "global";
   try {
-    plans = plansFor(
+    const effectiveSelection =
+      options.selection === undefined
+        ? undefined
+        : selectionWithPersistedTargets(options.paths, options.selection);
+    const integrationPlans = plansFor(
       options.paths,
       options.skillSource,
       harnesses,
       guidance,
       options.cwd ?? process.cwd(),
+      effectiveSelection,
     );
+    const customTargets =
+      effectiveSelection === undefined ? [] : customTargetsFor(effectiveSelection);
+    plans =
+      customTargets.length === 0
+        ? integrationPlans
+        : uniquePlans([...integrationPlans, planSetupState(options.paths, customTargets)]);
   } catch (error) {
     return { exitCode: 1, output: `Setup failed before making changes: ${errorMessage(error)}` };
   }
@@ -757,7 +1071,9 @@ export const setup = async (options: SetupOptions): Promise<LifecycleResult> => 
       if (plan.previous === null) return `  CREATE ${plan.path}\n${diff}`;
       return `  UPDATE ${plan.path}\n${diff}\n    backup: ${nextBackupPath(plan.path)}`;
     }),
-    ...skippedHarnessLines(options.paths, harnesses).map((line) => `  ${line}`),
+    ...(options.selection === undefined
+      ? skippedHarnessLines(options.paths, harnesses).map((line) => `  ${line}`)
+      : []),
     "  MCP command: npx -y @p4cs/deardiary@latest mcp",
   ];
   if (changes.length === 0) {
@@ -795,7 +1111,7 @@ export const setup = async (options: SetupOptions): Promise<LifecycleResult> => 
     return { exitCode: 1, output: output.join("\n") };
   }
   output.push(
-    "Setup complete. Restart open harness sessions, then run 'npx -y @p4cs/deardiary@latest doctor'.",
+    "Setup complete. Restart your open agent sessions, then run 'npx -y @p4cs/deardiary@latest doctor'.",
   );
   return { exitCode: 0, output: output.join("\n") };
 };
@@ -854,7 +1170,7 @@ const removeSkill = (label: string, path: string): RemovedFile | null => {
 const removeGuidance = (target: GuidanceTarget): RemovedFile | null => {
   const previous = readFile(target.path);
   if (previous === null) return null;
-  const range = managedBlockRange(previous, target.path);
+  const range = managedBlockRange(previous, target.path, target.startMarker, target.endMarker);
   if (range === null) return null;
   const start =
     range.start > 0 && previous[range.start - 1] === "\n" ? range.start - 1 : range.start;
@@ -871,17 +1187,60 @@ const removePlans = (
   paths: LifecyclePaths,
   guidance: ManagedGuidanceScope,
   cwd: string,
-): ReadonlyArray<RemovedFile> =>
-  [
+): ReadonlyArray<RemovedFile> => {
+  const state = readSetupState(paths);
+  const customRemovals = state.customTargets.flatMap((target) => [
+    removeSkill("custom skill", customSkillPath(target)),
+    removeGuidance({
+      label: "custom AGENTS.md guidance",
+      path: target.guidancePath,
+      block: customGuidanceBlock,
+      startMarker: customGuidanceStartMarker,
+      endMarker: customGuidanceEndMarker,
+    }),
+  ]);
+  const statePrevious = readFile(paths.setupStatePath);
+  const removals = [
     removeClaude(paths.claudeConfig),
     removeCodex(paths.codexConfig),
     removeOpenCode(paths.openCodeConfig),
     removeSkill("Claude Code skill", paths.claudeSkill),
     removeSkill("shared agents skill", paths.agentsSkill),
+    removeSkill("Grok Build skill", paths.grokSkill),
+    removeSkill("Cursor skill", paths.cursorSkill),
+    removeSkill("OpenCode skill", paths.openCodeSkill),
     ...guidanceTargets(paths, { claude: true, codex: true, openCode: false }, guidance, cwd).map(
       removeGuidance,
     ),
+    ...(guidance === "global"
+      ? [
+          removeGuidance({
+            label: "OpenCode global guidance",
+            path: paths.openCodeGuidance,
+            block: portableGuidanceBlock,
+          }),
+        ]
+      : []),
+    ...customRemovals,
+    ...(statePrevious === null
+      ? []
+      : [
+          {
+            label: "custom path registry",
+            path: paths.setupStatePath,
+            previous: statePrevious,
+            next: null,
+          },
+        ]),
   ].filter((plan): plan is RemovedFile => plan !== null);
+  const seen = new Set<string>();
+  return removals.filter((removal) => {
+    const path = NodePath.normalize(removal.path);
+    if (seen.has(path)) return false;
+    seen.add(path);
+    return true;
+  });
+};
 
 const removeEmptyParent = (path: string): void => {
   try {
@@ -1058,7 +1417,7 @@ export const benchStartup = async (
 
 const databaseHealth = (paths: LifecyclePaths): { readonly ok: boolean; readonly line: string } => {
   if (!NodeFs.existsSync(paths.databasePath)) {
-    return { ok: true, line: `OK Data: database not created yet (${paths.databasePath})` };
+    return { ok: true, line: `INFO Data: database not created yet (${paths.databasePath})` };
   }
   let database: DatabaseSync | undefined;
   try {
@@ -1101,25 +1460,43 @@ export interface DoctorOptions {
 export const doctor = async (options: DoctorOptions): Promise<LifecycleResult> => {
   const lines = [`OK CLI: Dear Diary ${options.version}, ${process.version}`];
   let failed = false;
+  let setupWarnings = 0;
   const data = databaseHealth(options.paths);
   lines.push(data.line);
   failed ||= !data.ok;
-  const harnesses = options.harnesses ?? detectHarnesses(options.paths);
+  const detected = options.harnesses === undefined ? detectAgents(options.paths) : undefined;
+  const selection: SetupSelection | undefined =
+    detected === undefined
+      ? undefined
+      : {
+          agents: (Object.entries(detected) as ReadonlyArray<[SetupAgent, boolean]>)
+            .filter(([, installed]) => installed)
+            .map(([agent]) => agent),
+        };
+  const selected = new Set(selection?.agents ?? []);
+  const harnesses = options.harnesses ?? {
+    claude: selected.has("claude"),
+    codex: selected.has("codex"),
+    openCode: selected.has("openCode"),
+  };
   try {
+    const effectiveSelection =
+      selection === undefined ? undefined : selectionWithPersistedTargets(options.paths, selection);
     for (const plan of plansFor(
       options.paths,
       options.skillSource,
       harnesses,
       options.guidance ?? "global",
       options.cwd ?? process.cwd(),
+      effectiveSelection,
     )) {
       if (plan.status === "current") lines.push(`OK ${plan.label}: ${plan.path}`);
-      else
-        lines.push(
-          `WARN ${plan.label}: ${plan.status}; run 'npx -y @p4cs/deardiary@latest setup' (${plan.path})`,
-        );
+      else {
+        setupWarnings += 1;
+        lines.push(`WARN ${plan.label}: ${plan.status} (${plan.path})`);
+      }
     }
-    lines.push(...skippedHarnessLines(options.paths, harnesses));
+    if (selection === undefined) lines.push(...skippedHarnessLines(options.paths, harnesses));
   } catch (error) {
     failed = true;
     lines.push(`FAIL Integrations: ${errorMessage(error)}`);
@@ -1127,6 +1504,11 @@ export const doctor = async (options: DoctorOptions): Promise<LifecycleResult> =
   const startup = await benchStartup(options.probe ?? probeMcpStartup);
   lines.push(startup.exitCode === 0 ? `OK ${startup.output}` : `FAIL ${startup.output}`);
   failed ||= startup.exitCode !== 0;
+  if (setupWarnings > 0) {
+    lines.push(
+      `FIX run 'npx -y @p4cs/deardiary@latest setup' to fix ${String(setupWarnings)} warning${setupWarnings === 1 ? "" : "s"} automatically.`,
+    );
+  }
   return { exitCode: failed ? 1 : 0, output: lines.join("\n") };
 };
 

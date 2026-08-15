@@ -121,7 +121,9 @@ describe("CLI surface", () => {
     expect(setupHelp.stdout).toContain("Usage: deardiary setup");
     expect(setupHelp.stdout).toContain("--guidance <scope>");
     expect(setupHelp.stdout).toContain("global (default), project, or none");
-    expect(setupHelp.stdout).toContain("Restart open harness sessions");
+    expect(setupHelp.stdout).toContain("Restart open agent sessions");
+    expect(setupHelp.stdout).toContain("Grok Build");
+    expect(setupHelp.stdout).toContain("Custom path");
     expect(setupHelp.stdout).not.toContain("--print-prompt");
 
     const uninstallHelp = runCli(["uninstall", "--help"], { home: blockingPath });

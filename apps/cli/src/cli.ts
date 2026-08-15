@@ -26,6 +26,7 @@ import {
 import {
   benchStartup,
   checkSetup,
+  detectAgents,
   doctor,
   launchSkillSync,
   type LifecyclePaths,
@@ -33,10 +34,20 @@ import {
   readCanonicalSkill,
   resolveLifecyclePaths,
   setup,
+  type SetupAgent,
+  type SetupSelection,
   syncInstalledSkills,
   type StartupProbe,
   uninstall,
 } from "./lifecycle.ts";
+import {
+  confirmSetupChanges,
+  renderLifecycleOutput,
+  startDoctorActivity,
+  terminalColorEnabled,
+  terminalPresentationEnabled,
+} from "./presentation.ts";
+import { runSetupWizard, type SetupWizard } from "./setup-wizard.ts";
 
 export const version = cliPackage.version;
 
@@ -52,7 +63,7 @@ Commands:
   random    Show one random entry
   export    Export entries
   mcp       Run the stdio MCP server
-  setup     Preview and install harness integrations and passive guidance
+  setup     Choose agents and install integrations, skills, and guidance
   doctor    Check runtime, data, integrations, guidance, and MCP startup
   bench-startup  Measure a cold MCP handshake
   uninstall Remove guidance, integrations, CLI, or all data
@@ -146,14 +157,17 @@ Run the long-lived Dear Diary MCP server over stdio. This command accepts no dat
 Protocol messages are written to stdout; diagnostics are written to stderr.`,
   setup: `Usage: deardiary setup [--check] [--yes] [--guidance <global|project|none>]
 
-Preview and install Dear Diary MCP integrations, shared skill copies, and passive guidance.
-Guidance is global by default. Project guidance targets the Git repository containing the current
-directory and requires Git. Interactive confirmation is required by default. Existing files are
-backed up before changes. Restart open harness sessions after setup.
+Open an installation wizard for detected Codex, Claude Code, Grok Build, Cursor, and OpenCode
+agents. Choose any detected agents, or choose Custom path to enter a skills directory and an
+AGENTS.md file to append to. Dear Diary writes the custom skill to deardiary/SKILL.md inside that
+directory. Guidance is global by default. Project guidance targets the Git
+repository containing the current directory and requires Git. Existing files are backed up before
+changes. Custom paths are saved for future setup checks, doctor runs, skill refresh, and uninstall.
+Restart open agent sessions after setup.
 
 Options:
   --check               Read-only integration, skill, and selected-guidance drift check
-  --yes                 Apply the preview without prompting (not valid with --check)
+  --yes                 Install to every detected agent without opening the wizard
   --guidance <scope>    global (default), project, or none
                         none leaves existing passive guidance untouched
   --help                Show this help`,
@@ -196,6 +210,7 @@ export interface RunOptions {
   readonly confirm?: (question: string) => Promise<string>;
   readonly lifecyclePaths?: LifecyclePaths;
   readonly startupProbe?: StartupProbe;
+  readonly setupWizard?: SetupWizard;
 }
 
 class CliUserError extends Error {
@@ -429,7 +444,10 @@ export const run = async (
       io.stderr(`deardiary: ${errorMessage(error)}`);
       return 1;
     }
-    const confirm = options.confirm ?? defaultConfirm;
+    const interactive = options.io === undefined && terminalPresentationEnabled();
+    const confirm =
+      options.confirm ??
+      (parsed.kind === "setup" && interactive ? confirmSetupChanges : defaultConfirm);
     let result;
     const cwd = NodePath.resolve(options.cwd ?? process.cwd());
     if (parsed.kind === "bench-startup") {
@@ -452,8 +470,30 @@ export const run = async (
         return 1;
       }
       if (parsed.kind === "setup") {
+        const detected = detectAgents(paths);
+        const detectedSelection: SetupSelection = {
+          agents: (Object.entries(detected) as ReadonlyArray<[SetupAgent, boolean]>)
+            .filter(([, installed]) => installed)
+            .map(([agent]) => agent),
+        };
+        const selection =
+          parsed.check || parsed.yes
+            ? detectedSelection
+            : await (options.setupWizard ?? runSetupWizard)({ paths, detected, cwd });
+        if (selection === null) {
+          if (options.setupWizard !== undefined || !interactive) {
+            io.stdout("Setup cancelled; no files changed.");
+          }
+          return 0;
+        }
+        const selected = new Set(selection.agents);
+        const harnesses = {
+          claude: selected.has("claude"),
+          codex: selected.has("codex"),
+          openCode: selected.has("openCode"),
+        };
         result = parsed.check
-          ? checkSetup(paths, skillSource, undefined, parsed.guidance, cwd)
+          ? checkSetup(paths, skillSource, harnesses, parsed.guidance, cwd, selection)
           : await setup({
               paths,
               skillSource,
@@ -461,18 +501,36 @@ export const run = async (
               confirm,
               guidance: parsed.guidance,
               cwd,
+              selection,
             });
       } else {
-        result = await doctor({
-          paths,
-          skillSource,
-          version,
-          probe: options.startupProbe ?? probeMcpStartup,
-          cwd,
-        });
+        const activity = interactive ? startDoctorActivity() : null;
+        try {
+          result = await doctor({
+            paths,
+            skillSource,
+            version,
+            probe: options.startupProbe ?? probeMcpStartup,
+            cwd,
+          });
+          activity?.finish(result.exitCode === 0);
+        } catch (error) {
+          activity?.finish(false);
+          throw error;
+        }
       }
     }
-    io.stdout(result.output);
+    io.stdout(
+      interactive
+        ? renderLifecycleOutput({
+            command: parsed.kind,
+            output: result.output,
+            exitCode: result.exitCode,
+            color: terminalColorEnabled(),
+            continuation: parsed.kind === "setup" && !parsed.check && !parsed.yes,
+          })
+        : result.output,
+    );
     return result.exitCode;
   }
 

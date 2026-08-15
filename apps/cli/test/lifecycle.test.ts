@@ -10,6 +10,7 @@ import {
   benchStartup,
   checkSetup,
   type DetectedHarnesses,
+  detectAgents,
   doctor,
   fullWipeConfirmation,
   launchSkillSync,
@@ -86,6 +87,140 @@ afterEach(() => {
 });
 
 describe("setup lifecycle", () => {
+  it("detects only the five supported agents from their homes or executables", () => {
+    const paths = makePaths();
+    const bin = NodePath.join(temporaryDirectory(), "bin");
+    NodeFs.mkdirSync(bin, { recursive: true });
+    for (const name of ["codex", "cursor-agent"]) {
+      const executable = NodePath.join(bin, name);
+      write(executable, "#!/bin/sh\nexit 0\n");
+      NodeFs.chmodSync(executable, 0o755);
+    }
+    NodeFs.mkdirSync(NodePath.join(paths.homeDir, ".grok"), { recursive: true });
+
+    expect(detectAgents(paths, { PATH: bin })).toEqual({
+      codex: true,
+      claude: false,
+      grok: true,
+      cursor: true,
+      openCode: false,
+    });
+  });
+
+  it("installs only selected native skill copies", async () => {
+    const paths = makePaths();
+    const result = await setup({
+      paths,
+      skillSource,
+      yes: true,
+      confirm: async () => "no",
+      selection: { agents: ["grok", "cursor", "openCode"] },
+    });
+
+    expect(result.exitCode, result.output).toBe(0);
+    expect(NodeFs.readFileSync(paths.grokSkill, "utf8")).toBe(skillSource);
+    expect(NodeFs.readFileSync(paths.cursorSkill, "utf8")).toBe(skillSource);
+    expect(NodeFs.readFileSync(paths.openCodeSkill, "utf8")).toBe(skillSource);
+    expect(NodeFs.existsSync(paths.claudeSkill)).toBe(false);
+    expect(NodeFs.existsSync(paths.agentsSkill)).toBe(false);
+    expect(NodeFs.existsSync(paths.claudeConfig)).toBe(false);
+    expect(NodeFs.existsSync(paths.codexConfig)).toBe(false);
+    expect(NodeFs.existsSync(paths.openCodeConfig)).toBe(true);
+    expect(NodeFs.readFileSync(paths.openCodeGuidance, "utf8")).toContain("the `deardiary` skill");
+  });
+
+  it("appends and upgrades a custom managed AGENTS.md section without touching user content", async () => {
+    const paths = makePaths();
+    const skillFolder = NodePath.join(temporaryDirectory(), "custom-skills");
+    const installedSkill = NodePath.join(skillFolder, "deardiary", "SKILL.md");
+    const guidancePath = NodePath.join(temporaryDirectory(), "policy", "AGENTS.md");
+    const original = "# My instructions\n\nKeep this exactly.\n";
+    write(guidancePath, original);
+    const installCustom = (includeCustom: boolean) =>
+      setup({
+        paths,
+        skillSource,
+        yes: true,
+        confirm: async () => "no",
+        selection: {
+          agents: [],
+          ...(includeCustom ? { custom: { skillFolder, guidancePath } } : {}),
+        },
+      });
+
+    const first = await installCustom(true);
+    expect(first.exitCode, first.output).toBe(0);
+    expect(first.output).toContain(`CREATE ${installedSkill}`);
+    expect(first.output).not.toContain(`CREATE ${NodePath.join(skillFolder, "SKILL.md")}`);
+    expect(first.output).toContain("+ <being_deardiary_section> … <end_deardiary_section>");
+    expect(NodeFs.readFileSync(installedSkill, "utf8")).toBe(skillSource);
+    const installed = NodeFs.readFileSync(guidancePath, "utf8");
+    expect(installed.startsWith(original)).toBe(true);
+    expect(installed).toContain("<being_deardiary_section>");
+    expect(installed).toContain("<end_deardiary_section>");
+    expect(JSON.parse(NodeFs.readFileSync(paths.setupStatePath, "utf8"))).toEqual({
+      version: 1,
+      customTargets: [{ skillFolder, guidancePath }],
+    });
+
+    write(guidancePath, installed.replace("the `deardiary` skill", "stale instructions"));
+    const second = await installCustom(false);
+    expect(second.exitCode, second.output).toBe(0);
+    const upgraded = NodeFs.readFileSync(guidancePath, "utf8");
+    expect(upgraded.startsWith(original)).toBe(true);
+    expect(upgraded).toContain("the `deardiary` skill");
+    expect(upgraded).not.toContain("stale instructions");
+    expect(upgraded.match(/<being_deardiary_section>/gu)).toHaveLength(1);
+    expect(NodeFs.readFileSync(`${guidancePath}.bak`, "utf8")).toBe(original);
+    expect(NodeFs.readFileSync(`${guidancePath}.bak.1`, "utf8")).toBe(
+      installed.replace("the `deardiary` skill", "stale instructions"),
+    );
+
+    const health = await doctor({
+      paths,
+      skillSource,
+      version: "0.0.1",
+      probe: async () => ({ milliseconds: 10, toolCount: 3 }),
+    });
+    expect(health.exitCode, health.output).toBe(0);
+    expect(health.output).toContain(`OK custom skill: ${installedSkill}`);
+    expect(health.output).toContain(`OK custom AGENTS.md guidance: ${guidancePath}`);
+
+    const removed = await uninstall({
+      paths,
+      level: "integrations",
+      yes: true,
+      confirm: async () => "no",
+    });
+    expect(removed.exitCode, removed.output).toBe(0);
+    expect(NodeFs.existsSync(installedSkill)).toBe(false);
+    expect(NodeFs.readFileSync(guidancePath, "utf8")).toBe(original);
+    expect(NodeFs.existsSync(paths.setupStatePath)).toBe(false);
+  });
+
+  it("rejects malformed custom section markers before copying the skill", async () => {
+    const paths = makePaths();
+    const skillFolder = NodePath.join(temporaryDirectory(), "custom-skills");
+    const installedSkill = NodePath.join(skillFolder, "deardiary", "SKILL.md");
+    const guidancePath = NodePath.join(temporaryDirectory(), "AGENTS.md");
+    write(guidancePath, "user content\n<being_deardiary_section>\nbroken");
+
+    const result = await setup({
+      paths,
+      skillSource,
+      yes: true,
+      confirm: async () => "no",
+      selection: { agents: [], custom: { skillFolder, guidancePath } },
+    });
+
+    expect(result.exitCode).toBe(1);
+    expect(result.output).toContain("malformed Dear Diary guidance markers");
+    expect(NodeFs.existsSync(installedSkill)).toBe(false);
+    expect(NodeFs.readFileSync(guidancePath, "utf8")).toBe(
+      "user content\n<being_deardiary_section>\nbroken",
+    );
+  });
+
   it("previews before confirmation and declining creates no files or backups", async () => {
     const paths = makePaths();
     let question = "";
@@ -783,6 +918,30 @@ describe("uninstall lifecycle", () => {
 });
 
 describe("opportunistic skill sync", () => {
+  it("refreshes skills in persisted custom folders", async () => {
+    const paths = makePaths();
+    const skillFolder = NodePath.join(temporaryDirectory(), "skills", "deardiary");
+    const skillsDirectory = NodePath.dirname(skillFolder);
+    const guidancePath = NodePath.join(temporaryDirectory(), "AGENTS.md");
+    const installed = await setup({
+      paths,
+      skillSource,
+      yes: true,
+      confirm: async () => "no",
+      selection: { agents: [], custom: { skillFolder, guidancePath } },
+    });
+    expect(installed.exitCode, installed.output).toBe(0);
+    expect(readJson(paths.setupStatePath)).toEqual({
+      version: 1,
+      customTargets: [{ skillFolder: skillsDirectory, guidancePath }],
+    });
+    write(NodePath.join(skillFolder, "SKILL.md"), "outdated skill\n");
+
+    await syncInstalledSkills(paths, skillSource);
+
+    expect(NodeFs.readFileSync(NodePath.join(skillFolder, "SKILL.md"), "utf8")).toBe(skillSource);
+  });
+
   it("launches without waiting for pending work and absorbs a later failure", async () => {
     let completed = false;
     const started = Promise.withResolvers<void>();
@@ -863,7 +1022,7 @@ describe("doctor and startup benchmark", () => {
       harnesses: allHarnesses,
     });
     expect(result.exitCode, result.output).toBe(0);
-    expect(result.output).toContain("OK Data: database not created yet");
+    expect(result.output).toContain("INFO Data: database not created yet");
     expect(result.output).toContain("OK MCP startup OK: 12 ms cold handshake, 3 tools, no daemon.");
     expect(NodeFs.existsSync(paths.dataDir)).toBe(false);
   });
@@ -884,6 +1043,13 @@ describe("doctor and startup benchmark", () => {
     expect(result.output).toContain("FAIL Data:");
     expect(result.output).toContain("run 'npx -y @p4cs/deardiary@latest setup'");
     expect(result.output).toContain("FAIL MCP startup failed: handshake timed out");
+    const warningLines = result.output.split("\n").filter((line) => line.startsWith("WARN "));
+    expect(warningLines.length).toBeGreaterThan(1);
+    expect(warningLines.every((line) => !line.includes("npx -y"))).toBe(true);
+    expect(result.output).toContain(
+      `to fix ${String(warningLines.length)} warnings automatically.`,
+    );
+    expect(result.output.match(/npx -y @p4cs\/deardiary@latest setup/gu)).toHaveLength(1);
   });
 
   it("has a testable benchmark abstraction and validates the tool catalog", async () => {
