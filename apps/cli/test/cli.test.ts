@@ -462,9 +462,14 @@ describe("argument and operational failures", () => {
     expect(noGitExecutable.stderr).toContain("Failed to execute Git operation");
     expect(noGitExecutable.stderr).not.toMatch(/\n\s+at /u);
 
+    const gitOnlyBin = temporaryDirectory("deardiary-git-only-");
+    const fakeGit = NodePath.join(gitOnlyBin, "git");
+    NodeFs.writeFileSync(fakeGit, "#!/bin/sh\nexit 1\n");
+    NodeFs.chmodSync(fakeGit, 0o755);
     const projectGuidance = runCli(["setup", "--check", "--guidance", "project"], {
       cwd: outside,
       home,
+      env: { PATH: gitOnlyBin },
     });
     expect(projectGuidance.status).toBe(1);
     expect(projectGuidance.stderr).toBe("");

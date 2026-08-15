@@ -107,6 +107,22 @@ describe("setup lifecycle", () => {
     });
   });
 
+  it("requires Git for project checks when no agents are selected", () => {
+    const paths = makePaths();
+    const outside = temporaryDirectory();
+    const result = checkSetup(
+      paths,
+      skillSource,
+      { claude: false, codex: false, openCode: false },
+      "project",
+      outside,
+      { agents: [] },
+    );
+
+    expect(result.exitCode).toBe(1);
+    expect(result.output).toContain("Project guidance requires a Git repository");
+  });
+
   it("installs only selected native skill copies", async () => {
     const paths = makePaths();
     const result = await setup({

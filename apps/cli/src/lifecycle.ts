@@ -532,7 +532,7 @@ const selectedGuidanceTargets = (
 ): ReadonlyArray<GuidanceTarget> => {
   const selected = new Set(selection.agents);
   const targets: Array<GuidanceTarget> = [];
-  if (scope === "project" && selected.size > 0) {
+  if (scope === "project") {
     const root = resolveGitRoot(cwd);
     if (selected.has("claude")) {
       targets.push({
