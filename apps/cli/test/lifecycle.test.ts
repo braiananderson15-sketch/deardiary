@@ -12,9 +12,11 @@ import {
   type DetectedHarnesses,
   doctor,
   fullWipeConfirmation,
+  launchSkillSync,
   type LifecyclePaths,
   resolveLifecyclePaths,
   setup,
+  syncInstalledSkills,
   uninstall,
 } from "../src/lifecycle.ts";
 
@@ -777,6 +779,75 @@ describe("uninstall lifecycle", () => {
     });
     expect(broadTopLevel.exitCode).toBe(1);
     expect(broadTopLevel.output).toContain(`Refusing unsafe data deletion target '${topLevel}'`);
+  });
+});
+
+describe("opportunistic skill sync", () => {
+  it("launches without waiting for pending work and absorbs a later failure", async () => {
+    let completed = false;
+    const started = Promise.withResolvers<void>();
+    const pending = Promise.withResolvers<void>();
+    const finished = Promise.withResolvers<void>();
+
+    launchSkillSync(async () => {
+      started.resolve();
+      await pending.promise;
+      completed = true;
+      finished.resolve();
+      throw new Error("refresh failed after startup");
+    });
+
+    await started.promise;
+    expect(completed).toBe(false);
+    pending.resolve();
+    await finished.promise;
+  });
+
+  it("atomically refreshes existing copies without installing missing ones", async () => {
+    const paths = makePaths();
+    write(paths.claudeSkill, "outdated skill\n");
+
+    await syncInstalledSkills(paths, skillSource);
+
+    expect(NodeFs.readFileSync(paths.claudeSkill, "utf8")).toBe(skillSource);
+    expect(NodeFs.existsSync(paths.agentsSkill)).toBe(false);
+    expect(NodeFs.readdirSync(NodePath.dirname(paths.claudeSkill))).toEqual(["SKILL.md"]);
+  });
+
+  it("does not replace a copy that already matches the bundled skill", async () => {
+    const paths = makePaths();
+    write(paths.agentsSkill, skillSource);
+    const oldTimestamp = new Date("2000-01-01T00:00:00.000Z");
+    NodeFs.utimesSync(paths.agentsSkill, oldTimestamp, oldTimestamp);
+    const before = NodeFs.statSync(paths.agentsSkill).mtimeMs;
+
+    await syncInstalledSkills(paths, skillSource);
+
+    expect(NodeFs.statSync(paths.agentsSkill).mtimeMs).toBe(before);
+  });
+
+  it("refreshes one copy when the other copy cannot be read", async () => {
+    const paths = makePaths();
+    NodeFs.mkdirSync(paths.claudeSkill, { recursive: true });
+    write(paths.agentsSkill, "outdated skill\n");
+
+    await syncInstalledSkills(paths, skillSource);
+
+    expect(NodeFs.statSync(paths.claudeSkill).isDirectory()).toBe(true);
+    expect(NodeFs.readFileSync(paths.agentsSkill, "utf8")).toBe(skillSource);
+  });
+
+  it("preserves an installed skill symlink while refreshing its target", async () => {
+    const paths = makePaths();
+    const target = NodePath.join(temporaryDirectory(), "dotfiles", "deardiary.md");
+    write(target, "outdated skill\n");
+    NodeFs.mkdirSync(NodePath.dirname(paths.agentsSkill), { recursive: true });
+    NodeFs.symlinkSync(target, paths.agentsSkill);
+
+    await syncInstalledSkills(paths, skillSource);
+
+    expect(NodeFs.lstatSync(paths.agentsSkill).isSymbolicLink()).toBe(true);
+    expect(NodeFs.readFileSync(target, "utf8")).toBe(skillSource);
   });
 });
 

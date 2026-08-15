@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 
+import * as NodeFsPromises from "node:fs/promises";
 import * as NodePath from "node:path";
 import * as NodeReadline from "node:readline/promises";
 
@@ -26,11 +27,13 @@ import {
   benchStartup,
   checkSetup,
   doctor,
+  launchSkillSync,
   type LifecyclePaths,
   probeMcpStartup,
   readCanonicalSkill,
   resolveLifecyclePaths,
   setup,
+  syncInstalledSkills,
   type StartupProbe,
   uninstall,
 } from "./lifecycle.ts";
@@ -394,10 +397,19 @@ export const run = async (
   }
   if (parsed.kind === "mcp") {
     try {
-      await runStdioServer({
+      const server = runStdioServer({
         startupCwd: NodePath.resolve(options.cwd ?? process.cwd()),
         version,
       });
+      launchSkillSync(async () => {
+        const paths = options.lifecyclePaths ?? resolveLifecyclePaths();
+        const skillSource = await NodeFsPromises.readFile(
+          new URL("../skill/SKILL.md", import.meta.url),
+          "utf8",
+        );
+        await syncInstalledSkills(paths, skillSource);
+      });
+      await server;
       return 0;
     } catch (error) {
       io.stderr(`deardiary: ${errorMessage(error)}`);
