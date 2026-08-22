@@ -3,7 +3,7 @@
   "scripts": [
     {
       "name": "Setup Worktree",
-      "command": "common_dir=$(git rev-parse --path-format=absolute --git-common-dir) && main_root=$(dirname \"$common_dir\") && if [ \"$PWD\" != \"$main_root\" ] && [ ! -e .repos ] && [ ! -L .repos ]; then ln -s \"$main_root/.repos\" .repos; fi && vp i",
+      "command": "vp i && if [ \"$PWD\" != \"$T3CODE_PROJECT_ROOT\" ]; then ln -sfn \"$T3CODE_PROJECT_ROOT/.repos\" .repos; fi",
       "icon": "configure",
       "runOnWorktreeCreate": true
     },

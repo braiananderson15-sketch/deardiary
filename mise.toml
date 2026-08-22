@@ -1,0 +1,6 @@
+[tools]
+"github:voidzero-dev/vite-plus" = "0.2.8"
+
+[tasks.setup]
+description = "Install workspace dependencies"
+run = "vp install --frozen-lockfile"
