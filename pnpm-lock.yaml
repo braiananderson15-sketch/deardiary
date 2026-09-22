@@ -12,6 +12,9 @@ catalogs:
     '@effect/platform-node':
       specifier: 4.0.0-beta.103
       version: 4.0.0-beta.103
+    '@effect/platform-node-shared':
+      specifier: 4.0.0-beta.103
+      version: 4.0.0-beta.103
     '@effect/vitest':
       specifier: 4.0.0-beta.103
       version: 4.0.0-beta.103
@@ -68,6 +71,9 @@ importers:
       '@effect/platform-node':
         specifier: 'catalog:'
         version: 4.0.0-beta.103(effect@4.0.0-beta.103)(ioredis@5.11.1)
+      '@effect/platform-node-shared':
+        specifier: 'catalog:'
+        version: 4.0.0-beta.103(effect@4.0.0-beta.103)
       '@modelcontextprotocol/sdk':
         specifier: 'catalog:'
         version: 1.30.0(zod@4.4.3)
@@ -341,11 +347,11 @@ packages:
     resolution: {integrity: sha512-y7/yvZ2TPAnR9+jnc00klvNNLkJiXFFrQA/hlLCcxA9a2A4zQIOimyFQ9XfwYKiGD1fb5GY8vbKIIgO8d5Tb2A==}
     engines: {node: '>= 20.12.0'}
 
-  '@effect/platform-node-shared@4.0.0-beta.104':
-    resolution: {integrity: sha512-wZQWlreuCfR+Ip6E93h2Wo56lFdBTflzSErFKxvrAW06/ORa7yZMD4oq4Ow5aU5+AlQgomQSEeBKM7uao4ZewQ==}
+  '@effect/platform-node-shared@4.0.0-beta.103':
+    resolution: {integrity: sha512-0aCZMBid5ifqmY55TkfCDLaGTIM8qu3bNFUW7qL9vh/7jFOkaIAMX2MA8muG4deqW17XWxawddWu4v0fK+UW3g==}
     engines: {node: '>=18.0.0'}
     peerDependencies:
-      effect: ^4.0.0-beta.104
+      effect: ^4.0.0-beta.103
 
   '@effect/platform-node@4.0.0-beta.103':
     resolution: {integrity: sha512-VD8fbpendwFokMwzC7/MxazjhEVDihPC5NZtomYEyZwGaA1LXMvwP1y8pfXwfshUkG56TN4EMQqzu72c0B9FhA==}
@@ -3381,7 +3387,7 @@ snapshots:
       fast-wrap-ansi: 0.2.2
       sisteransi: 1.0.5
 
-  '@effect/platform-node-shared@4.0.0-beta.104(effect@4.0.0-beta.103)':
+  '@effect/platform-node-shared@4.0.0-beta.103(effect@4.0.0-beta.103)':
     dependencies:
       '@types/ws': 8.18.1
       effect: 4.0.0-beta.103
@@ -3392,7 +3398,7 @@ snapshots:
 
   '@effect/platform-node@4.0.0-beta.103(effect@4.0.0-beta.103)(ioredis@5.11.1)':
     dependencies:
-      '@effect/platform-node-shared': 4.0.0-beta.104(effect@4.0.0-beta.103)
+      '@effect/platform-node-shared': 4.0.0-beta.103(effect@4.0.0-beta.103)
       effect: 4.0.0-beta.103
       ioredis: 5.11.1
       mime: 4.1.0

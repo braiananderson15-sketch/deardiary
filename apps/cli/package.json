@@ -27,6 +27,7 @@
   "dependencies": {
     "@clack/prompts": "^1.7.0",
     "@effect/platform-node": "catalog:",
+    "@effect/platform-node-shared": "catalog:",
     "@modelcontextprotocol/sdk": "catalog:",
     "effect": "catalog:",
     "zod": "catalog:"
